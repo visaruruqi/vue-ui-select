@@ -6,6 +6,12 @@ Search, multi-select, tagging, grouping, keyboard navigation, ARIA accessibility
 
 **[Live Demo & Playground](https://vue-ui-select.vercel.app)**
 
+## Why this exists
+
+The AngularJS `ui-select` directive had a quality that's hard to find in modern component libraries: you could build complex select scenarios — multi-select, grouping, async search, tagging, custom rendering — **entirely in the template**, without writing a single extra line of JavaScript. Slots and props were expressive enough that your component code stayed clean and focused on business logic, never polluted with select-widget plumbing.
+
+This library brings that same philosophy to Vue 3. The richer the slot and prop API, the less JavaScript you write. Localization, custom layouts, async data, tag creation — it's all configurable from the template. If you ever felt nostalgic about how productive `ui-select` made you, this is for you.
+
 ## Features
 
 - **Single & multi-select** — strings, objects, or dictionaries
