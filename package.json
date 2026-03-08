@@ -1,6 +1,6 @@
 {
   "name": "vue-ui-select",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "license": "MIT",
   "description": "Vue 3 drop-in replacement for AngularJS ui-select — search, multi-select, tagging, grouping, theming",
@@ -17,7 +17,8 @@
     "selectize",
     "typeahead"
   ],
-  "author": "",
+  "author": "Visar Uruqi <visar.uruqi@gmail.com>",
+  "homepage": "https://vue-ui-select.vercel.app",
   "repository": {
     "type": "git",
     "url": ""

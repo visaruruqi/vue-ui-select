@@ -4,6 +4,8 @@ A production-grade Vue 3 select component — drop-in replacement for AngularJS 
 
 Search, multi-select, tagging, grouping, keyboard navigation, ARIA accessibility, teleport, and four built-in themes.
 
+**[Live Demo & Playground](https://vue-ui-select.vercel.app)**
+
 ## Features
 
 - **Single & multi-select** — strings, objects, or dictionaries

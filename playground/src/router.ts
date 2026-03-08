@@ -1,7 +1,8 @@
 import type { RouteRecordRaw } from 'vue-router'
 
 export const routes: RouteRecordRaw[] = [
-  { path: '/', redirect: '/getting-started' },
+  { path: '/', redirect: '/install' },
+  { path: '/install', component: () => import('./pages/InstallPage.vue'), meta: { title: '📦 Install' } },
   { path: '/getting-started', component: () => import('./pages/GettingStartedPage.vue'), meta: { title: '🚀 Getting Started' } },
   { path: '/basic', component: () => import('./pages/BasicPage.vue'), meta: { title: 'Basic' } },
   { path: '/append-to-body', component: () => import('./pages/AppendToBodyPage.vue'), meta: { title: 'Append To Body' } },
