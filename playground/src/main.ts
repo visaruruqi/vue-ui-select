@@ -17,6 +17,28 @@ import '../../src/themes/selectize.css'
 const router = createRouter({
   history: createWebHistory(),
   routes,
+  scrollBehavior() {
+    return { top: 0 }
+  },
+})
+
+// SEO: update document title + meta description on every navigation
+router.afterEach((to) => {
+  const title = to.meta.title as string | undefined
+  document.title = title
+    ? `${title} — vue-ui-select`
+    : 'vue-ui-select Playground'
+
+  const description = to.meta.description as string | undefined
+  let tag = document.querySelector('meta[name="description"]')
+  if (description) {
+    if (!tag) {
+      tag = document.createElement('meta')
+      tag.setAttribute('name', 'description')
+      document.head.appendChild(tag)
+    }
+    tag.setAttribute('content', description)
+  }
 })
 
 const app = createApp(App)

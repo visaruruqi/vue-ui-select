@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://vue-ui-select.vercel.app/install</loc></url>
+  <url><loc>https://vue-ui-select.vercel.app/getting-started</loc></url>
+  <url><loc>https://vue-ui-select.vercel.app/basic</loc></url>
+  <url><loc>https://vue-ui-select.vercel.app/append-to-body</loc></url>
+  <url><loc>https://vue-ui-select.vercel.app/bind-single-property</loc></url>
+  <url><loc>https://vue-ui-select.vercel.app/bind-single-property-async</loc></url>
+  <url><loc>https://vue-ui-select.vercel.app/disable-search</loc></url>
+  <url><loc>https://vue-ui-select.vercel.app/dropdown-position</loc></url>
+  <url><loc>https://vue-ui-select.vercel.app/event-on-selection</loc></url>
+  <url><loc>https://vue-ui-select.vercel.app/focus</loc></url>
+  <url><loc>https://vue-ui-select.vercel.app/group-by</loc></url>
+  <url><loc>https://vue-ui-select.vercel.app/group-filter</loc></url>
+  <url><loc>https://vue-ui-select.vercel.app/multiple-selection</loc></url>
+  <url><loc>https://vue-ui-select.vercel.app/object-as-source</loc></url>
+  <url><loc>https://vue-ui-select.vercel.app/tagging</loc></url>
+  <url><loc>https://vue-ui-select.vercel.app/bootstrap-theme</loc></url>
+  <url><loc>https://vue-ui-select.vercel.app/select2-theme</loc></url>
+  <url><loc>https://vue-ui-select.vercel.app/selectize-theme</loc></url>
+  <url><loc>https://vue-ui-select.vercel.app/tailwind</loc></url>
+  <url><loc>https://vue-ui-select.vercel.app/tailwind-multiple</loc></url>
+  <url><loc>https://vue-ui-select.vercel.app/tailwind-grouped</loc></url>
+  <url><loc>https://vue-ui-select.vercel.app/tailwind-tagging</loc></url>
+  <url><loc>https://vue-ui-select.vercel.app/tailwind-teleport</loc></url>
+  <url><loc>https://vue-ui-select.vercel.app/tailwind-states</loc></url>
+  <url><loc>https://vue-ui-select.vercel.app/tailwind-dark-mode</loc></url>
+  <url><loc>https://vue-ui-select.vercel.app/performance</loc></url>
+</urlset>
