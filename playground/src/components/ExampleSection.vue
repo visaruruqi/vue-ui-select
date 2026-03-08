@@ -56,7 +56,7 @@
             <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
           </svg>
         </button>
-        <pre class="p-4 text-sm leading-relaxed whitespace-pre"><code class="text-gray-100" v-html="highlightedCode"></code></pre>
+        <pre class="p-3 sm:p-4 text-xs sm:text-sm leading-relaxed whitespace-pre"><code class="text-gray-100" v-html="highlightedCode"></code></pre>
       </div>
     </div>
   </div>
@@ -85,9 +85,18 @@ const highlightedCode = computed(() => highlight(props.code))
 </script>
 
 <style scoped>
-/* Fit to content but allow expanding beyond the parent max-w-md */
+/*
+  On desktop (sidebar visible) the code block can expand beyond the
+  parent max-w container but must stay within the viewport minus sidebar.
+  On mobile (no sidebar) it's capped to the full viewport minus padding.
+*/
 .code-breakout {
   width: fit-content;
-  max-width: calc(100vw - 16rem - 4rem);
+  max-width: calc(100vw - 2rem);        /* mobile: full width minus gutter */
+}
+@media (min-width: 1024px) {
+  .code-breakout {
+    max-width: calc(100vw - 16rem - 4rem); /* desktop: minus sidebar + padding */
+  }
 }
 </style>
