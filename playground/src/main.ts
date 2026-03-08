@@ -1,5 +1,6 @@
 import { createApp } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
+import { inject } from '@vercel/analytics'
 import App from './App.vue'
 import { UiSelectPlugin } from 'vue-ui-select'
 import { routes } from './router'
@@ -22,3 +23,6 @@ const app = createApp(App)
 app.use(router)
 app.use(UiSelectPlugin, { theme: 'tailwind' })
 app.mount('#app')
+
+// Vercel Analytics — auto-tracks page views
+inject()

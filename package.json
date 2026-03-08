@@ -72,5 +72,8 @@
     "test:all": "vitest run && npx playwright test",
     "typecheck": "vue-tsc --noEmit",
     "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "@vercel/analytics": "^1.6.1"
   }
 }
