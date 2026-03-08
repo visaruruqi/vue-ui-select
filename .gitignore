@@ -35,3 +35,7 @@ coverage/
 
 # Temp files
 *.tgz
+
+# Playwright
+playwright-report/
+test-results/

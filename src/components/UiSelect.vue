@@ -384,7 +384,6 @@ export default defineComponent({
     :data-disabled="$props.disabled || undefined"
     :data-multiple="$props.multiple || undefined"
     :data-position="resolvedPosition"
-    data-testid="ui-select"
     tabindex="0"
     @keydown="handleKeyDown"
     @paste="handlePaste"
