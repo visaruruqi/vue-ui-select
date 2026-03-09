@@ -53,6 +53,195 @@ app.mount('#app')
 import { UiSelect, UiSelectMatch, UiSelectChoices } from 'vue-ui-select'
 ```
 
+## Mini Tutorial
+
+Everything is built with **three tags**. Think of them like a sandwich:
+
+```html
+<ui-select>            ← the wrapper (the bread)
+  <ui-select-match>    ← what the user sees when something is picked (top slice)
+  <ui-select-choices>  ← the dropdown list to pick from (bottom slice)
+</ui-select>
+```
+
+That's it. Every feature in this library is just props and slots on these three tags.
+
+---
+
+### Step 1 — The simplest possible select
+
+Pick one thing from a list of strings:
+
+```vue
+<template>
+  <ui-select v-model="color">
+    <ui-select-match placeholder="Pick a color..." />
+    <ui-select-choices :items="['Red', 'Green', 'Blue']">
+      <template #choice="{ item }">{{ item }}</template>
+    </ui-select-choices>
+  </ui-select>
+</template>
+
+<script setup>
+import { ref } from 'vue'
+const color = ref(null)
+</script>
+```
+
+**What's happening:**
+- `v-model="color"` — the selected value goes here
+- `:items` — your list of options
+- `#choice` — how each option looks in the dropdown
+
+---
+
+### Step 2 — Working with objects
+
+Real apps use objects, not strings. Just tell the component which field is the ID:
+
+```vue
+<template>
+  <ui-select v-model="person">
+    <ui-select-match placeholder="Pick a person...">
+      <template #default="{ selected }">{{ selected.name }}</template>
+    </ui-select-match>
+    <ui-select-choices :items="people" :track-by="'id'">
+      <template #choice="{ item }">{{ item.name }}</template>
+    </ui-select-choices>
+  </ui-select>
+</template>
+
+<script setup>
+import { ref } from 'vue'
+const person = ref(null)
+const people = [
+  { id: 1, name: 'Alice' },
+  { id: 2, name: 'Bob' },
+  { id: 3, name: 'Charlie' },
+]
+</script>
+```
+
+**What changed:**
+- `:track-by="'id'"` — tells the component how to compare objects
+- `#default="{ selected }"` — controls how the *picked* item displays (not the dropdown — the input area)
+
+---
+
+### Step 3 — Add search
+
+Just add `:search-fields` and you get type-ahead filtering for free:
+
+```vue
+<ui-select-choices :items="people" :track-by="'id'" :search-fields="['name']">
+  <template #choice="{ item }">{{ item.name }}</template>
+</ui-select-choices>
+```
+
+Want to search multiple fields? Pass them all in: `:search-fields="['name', 'email', 'city']"`
+
+---
+
+### Step 4 — Multi-select
+
+Add `:multiple="true"` to the wrapper. Now `v-model` becomes an **array**:
+
+```vue
+<template>
+  <ui-select v-model="selected" :multiple="true">
+    <ui-select-match placeholder="Add people...">
+      <template #tag="{ item, removeItem }">
+        {{ item.name }}
+        <button @click="removeItem(item)">&times;</button>
+      </template>
+    </ui-select-match>
+    <ui-select-choices :items="people" :track-by="'id'" :search-fields="['name']">
+      <template #choice="{ item }">{{ item.name }}</template>
+    </ui-select-choices>
+  </ui-select>
+</template>
+
+<script setup>
+import { ref } from 'vue'
+const selected = ref([])
+</script>
+```
+
+**What changed:**
+- `:multiple="true"` — now you can pick many items
+- `#tag` replaces `#default` — each selected item shows as a tag/chip
+- `removeItem(item)` — call this to remove a tag
+
+---
+
+### Step 5 — Highlight search matches
+
+Use the `highlighted()` function from the slot to bold the matching text:
+
+```vue
+<ui-select-choices :items="people" :track-by="'id'" :search-fields="['name']">
+  <template #choice="{ item, search, highlighted }">
+    <span v-html="highlighted(item.name, search)"></span>
+  </template>
+</ui-select-choices>
+```
+
+Type "ali" and you'll see "**Ali**ce" with the match bolded.
+
+---
+
+### Step 6 — Grouping
+
+Group items by a property:
+
+```vue
+<ui-select-choices :items="people" :track-by="'id'" :group-by="'country'">
+  <template #group-header="{ groupName }">🌍 {{ groupName }}</template>
+  <template #choice="{ item }">{{ item.name }}</template>
+</ui-select-choices>
+```
+
+---
+
+### Step 7 — Checkbox multi-select
+
+Show checkboxes next to each item — great for "pick many without closing the dropdown":
+
+```vue
+<ui-select v-model="selected" :multiple="true" :remove-selected="false" :close-on-select="false">
+  <ui-select-match placeholder="Pick colors...">
+    <template #tag="{ item, removeItem }">
+      {{ item }} <button @click="removeItem(item)">&times;</button>
+    </template>
+  </ui-select-match>
+  <ui-select-choices :items="['Red', 'Green', 'Blue']" :show-checkboxes="true">
+    <template #choice="{ item }">{{ item }}</template>
+  </ui-select-choices>
+</ui-select>
+```
+
+**Key props for checkboxes:**
+- `:show-checkboxes="true"` — render checkboxes
+- `:remove-selected="false"` — keep checked items visible in the dropdown
+- `:close-on-select="false"` — don't close after each pick
+
+---
+
+### Cheat sheet
+
+| I want to... | What to add |
+|---|---|
+| Pick one item | `<ui-select v-model="val">` |
+| Pick many items | add `:multiple="true"` |
+| Search/filter | add `:search-fields="['name']"` on choices |
+| Use objects | add `:track-by="'id'"` on choices |
+| Bold search matches | use `highlighted(item.name, search)` in `#choice` slot |
+| Group items | add `:group-by="'country'"` on choices |
+| Checkboxes | add `:show-checkboxes="true"` on choices |
+| Tagging (create new items) | add `:tagging="true"` on wrapper |
+| Clear button | add `:clearable="true"` on wrapper |
+| Empty state message | add `<ui-select-no-choice>No results</ui-select-no-choice>` |
+
 ## Usage
 
 ### Single select
