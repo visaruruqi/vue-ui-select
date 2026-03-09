@@ -85,3 +85,12 @@
 .ui-select--selectize .ui-select__spinner { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); }
 .ui-select--selectize .ui-select__spinner-icon { display: inline-block; width: 14px; height: 14px; border: 2px solid #d0d0d0; border-top-color: #5897fb; border-radius: 50%; animation: ui-select-spin 0.6s linear infinite; }
 .ui-select--selectize mark { background-color: #ffe184; padding: 0; }
+
+.ui-select--selectize .ui-select-choices__checkbox,
+.ui-select__dropdown--selectize .ui-select-choices__checkbox {
+  pointer-events: none; margin-right: 0.5rem; vertical-align: middle;
+  width: 14px; height: 14px; accent-color: #5897fb; flex-shrink: 0;
+}
+[data-show-checkboxes] > .ui-select-choices__row,
+.ui-select--selectize [data-show-checkboxes] > .ui-select-choices__row,
+.ui-select__dropdown--selectize [data-show-checkboxes] > .ui-select-choices__row { display: flex; align-items: center; }

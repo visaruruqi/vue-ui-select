@@ -15,6 +15,7 @@ export const routes: RouteRecordRaw[] = [
   { path: '/group-by', component: () => import('./pages/GroupByPage.vue'), meta: { title: 'Group By', description: 'Group dropdown options by a property using the group-by directive.' } },
   { path: '/group-filter', component: () => import('./pages/GroupFilterPage.vue'), meta: { title: 'Group Filter', description: 'Filter and reorder option groups with a custom group-filter function.' } },
   { path: '/multiple-selection', component: () => import('./pages/MultipleSelectionPage.vue'), meta: { title: 'Multiple Selection', description: 'Enable multi-select with tag-style chips for choosing multiple values.' } },
+  { path: '/checkbox-selection', component: () => import('./pages/CheckboxSelectionPage.vue'), meta: { title: 'Checkbox Selection', description: 'Multi-select with inline checkboxes rendered by ui-select-choices.' } },
   { path: '/object-as-source', component: () => import('./pages/ObjectAsSourcePage.vue'), meta: { title: 'Object As Source', description: 'Use an array of objects as the data source with custom display properties.' } },
   { path: '/tagging', component: () => import('./pages/TaggingPage.vue'), meta: { title: 'Tagging', description: 'Allow users to create new tags on the fly with the tagging feature.' } },
   { path: '/bootstrap-theme', component: () => import('./pages/BootstrapThemePage.vue'), meta: { title: 'Bootstrap Theme', description: 'vue-ui-select styled with the Bootstrap theme for Bootstrap-based projects.' } },

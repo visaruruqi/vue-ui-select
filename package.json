@@ -1,6 +1,6 @@
 {
   "name": "vue-ui-select",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "type": "module",
   "license": "MIT",
   "description": "Vue 3 drop-in replacement for AngularJS ui-select — search, multi-select, tagging, grouping, theming",

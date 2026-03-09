@@ -20,6 +20,7 @@ export default defineComponent({
     sortFn: { type: Function as PropType<((a: any, b: any) => number) | undefined>, default: undefined },
     minimumInputLength: { type: Number, default: 0 },
     refreshDelay: { type: Number, default: 0 },
+    showCheckboxes: { type: Boolean, default: false },
   },
   setup(props) {
     const ctx = inject(UI_SELECT_CONTEXT) as UiSelectContext
@@ -85,6 +86,11 @@ export default defineComponent({
     function handleItemClick(item: any, e: Event) {
       e.stopPropagation()
       if (isChoiceDisabled(item)) return
+      // When checkboxes are shown, toggle selection on/off
+      if (props.showCheckboxes && ctx.isItemSelected(item)) {
+        ctx.removeItem(item)
+        return
+      }
       if (!ctx.removeSelected.value && ctx.isItemSelected(item)) return
       ctx.selectItem(item)
     }
@@ -179,6 +185,7 @@ export default defineComponent({
           class="ui-select-choices"
           data-ui-select-choices=""
           data-testid="ui-select-choices"
+          :data-show-checkboxes="showCheckboxes || undefined"
           role="listbox"
           :id="ctx.uid + '-listbox'"
         >
@@ -217,6 +224,16 @@ export default defineComponent({
               @click="handleItemClick(item, $event)"
               @mouseenter="handleItemMouseEnter(item, getFlatIndex(item))"
             >
+              <input
+                v-if="showCheckboxes"
+                type="checkbox"
+                :checked="ctx.isItemSelected(item)"
+                class="ui-select-choices__checkbox"
+                data-ui-select-checkbox=""
+                tabindex="-1"
+                aria-hidden="true"
+                @click.prevent
+              />
               <slot name="choice" v-bind="getChoiceSlotScope(item, getFlatIndex(item))">
                 {{ typeof item === 'object' ? JSON.stringify(item) : item }}
               </slot>

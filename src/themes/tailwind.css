@@ -428,3 +428,21 @@
 .ui-select--tailwind.ui-select--error.ui-select--open .ui-select-match {
   box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.3);
 }
+
+/* ---- Checkbox in choices ---- */
+.ui-select--tailwind .ui-select-choices__checkbox,
+.ui-select__dropdown--tailwind .ui-select-choices__checkbox {
+  pointer-events: none;
+  margin-right: 0.5rem;
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--ui-select-primary, #3b82f6);
+  flex-shrink: 0;
+  border-radius: 0.25rem;
+}
+[data-show-checkboxes] > .ui-select-choices__row,
+.ui-select--tailwind [data-show-checkboxes] > .ui-select-choices__row,
+.ui-select__dropdown--tailwind [data-show-checkboxes] > .ui-select-choices__row {
+  display: flex;
+  align-items: center;
+}

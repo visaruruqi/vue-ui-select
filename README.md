@@ -111,6 +111,25 @@ import { UiSelect, UiSelectMatch, UiSelectChoices } from 'vue-ui-select'
 </ui-select>
 ```
 
+### Checkbox multi-select
+
+```vue
+<template>
+  <ui-select v-model="selected" :multiple="true" :remove-selected="false" :close-on-select="false">
+    <ui-select-match placeholder="Pick people...">
+      <template #tag="{ item, removeItem }">
+        {{ item.name }} <button @click="removeItem(item)">&times;</button>
+      </template>
+    </ui-select-match>
+    <ui-select-choices :items="people" :track-by="'id'" :search-fields="['name']" :show-checkboxes="true">
+      <template #choice="{ item }">{{ item.name }}</template>
+    </ui-select-choices>
+  </ui-select>
+</template>
+```
+
+> **Tip:** Pair `:show-checkboxes="true"` with `:remove-selected="false"` and `:close-on-select="false"` so selected items stay visible with checked checkboxes and the dropdown remains open for multiple picks.
+
 ### Grouping
 
 ```vue
@@ -214,6 +233,7 @@ import { UiSelect, UiSelectMatch, UiSelectChoices } from 'vue-ui-select'
 | `sort-fn` | `Function` | — | Custom sort function |
 | `minimum-input-length` | `number` | `0` | Min chars before showing results |
 | `refresh-delay` | `number` | `0` | Debounce delay for search |
+| `show-checkboxes` | `boolean` | `false` | Show inline checkboxes in dropdown choices |
 
 ### `<ui-select-choices>` Slots
 

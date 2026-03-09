@@ -68,6 +68,7 @@ export interface UiSelectChoicesProps {
   sortFn?: (a: any, b: any) => number
   minimumInputLength?: number
   refreshDelay?: number
+  showCheckboxes?: boolean
 }
 
 // ---- UiSelectMatch props ----
