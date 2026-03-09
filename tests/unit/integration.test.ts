@@ -817,3 +817,175 @@ describe('Minimum input length', () => {
     wrapper.unmount()
   })
 })
+
+// ================================================================
+// Checkbox multi-select (showCheckboxes prop)
+// ================================================================
+
+describe('Checkbox multi-select', () => {
+  function mountCheckboxSelect(
+    overrides: Record<string, any> = {},
+    choicesOverrides: Record<string, any> = {},
+  ) {
+    return mountSelect(
+      { multiple: true, removeSelected: false, closeOnSelect: false, ...overrides },
+      { items: colors, trackBy: undefined, searchFields: [], showCheckboxes: true, ...choicesOverrides },
+      { choiceSlot: ({ item }: any) => h('span', { class: 'choice-item' }, String(item)) },
+    )
+  }
+
+  it('renders checkbox inputs inside each choice row', async () => {
+    const wrapper = mountCheckboxSelect()
+    await openDropdown(wrapper)
+
+    const checkboxes = wrapper.findAll('[data-ui-select-checkbox]')
+    expect(checkboxes.length).toBe(colors.length)
+    checkboxes.forEach(cb => {
+      expect(cb.element.tagName).toBe('INPUT')
+      expect((cb.element as HTMLInputElement).type).toBe('checkbox')
+    })
+    wrapper.unmount()
+  })
+
+  it('does NOT render checkboxes when showCheckboxes is false', async () => {
+    const wrapper = mountSelect(
+      { multiple: true },
+      { items: colors, trackBy: undefined, searchFields: [], showCheckboxes: false },
+    )
+    await openDropdown(wrapper)
+
+    expect(wrapper.findAll('[data-ui-select-checkbox]').length).toBe(0)
+    wrapper.unmount()
+  })
+
+  it('sets data-show-checkboxes attribute on the choices container', async () => {
+    const wrapper = mountCheckboxSelect()
+    await openDropdown(wrapper)
+
+    expect(wrapper.find('[data-show-checkboxes]').exists()).toBe(true)
+    wrapper.unmount()
+  })
+
+  it('does NOT set data-show-checkboxes when showCheckboxes is false', async () => {
+    const wrapper = mountSelect(
+      { multiple: true },
+      { items: colors, trackBy: undefined, searchFields: [] },
+    )
+    await openDropdown(wrapper)
+
+    expect(wrapper.find('[data-show-checkboxes]').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('checks a checkbox when an item is selected', async () => {
+    const wrapper = mountCheckboxSelect()
+    await openDropdown(wrapper)
+
+    const firstChoice = getChoices(wrapper)[0]
+    await firstChoice.trigger('click')
+    await nextTick()
+
+    const checkbox = firstChoice.find('[data-ui-select-checkbox]')
+    expect((checkbox.element as HTMLInputElement).checked).toBe(true)
+    wrapper.unmount()
+  })
+
+  it('unchecks a checkbox when clicking a selected item again', async () => {
+    const wrapper = mountCheckboxSelect()
+    await openDropdown(wrapper)
+
+    const firstChoice = getChoices(wrapper)[0]
+    // Select
+    await firstChoice.trigger('click')
+    await nextTick()
+    expect((firstChoice.find('[data-ui-select-checkbox]').element as HTMLInputElement).checked).toBe(true)
+
+    // Deselect
+    await firstChoice.trigger('click')
+    await nextTick()
+    expect((firstChoice.find('[data-ui-select-checkbox]').element as HTMLInputElement).checked).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('keeps dropdown open after selecting (closeOnSelect=false)', async () => {
+    const wrapper = mountCheckboxSelect()
+    await openDropdown(wrapper)
+
+    const firstChoice = getChoices(wrapper)[0]
+    await firstChoice.trigger('click')
+    await nextTick()
+
+    expect(wrapper.find('[data-testid="ui-select-dropdown"]').exists()).toBe(true)
+    wrapper.unmount()
+  })
+
+  it('keeps selected items visible in dropdown (removeSelected=false)', async () => {
+    const wrapper = mountCheckboxSelect()
+    await openDropdown(wrapper)
+
+    const beforeCount = getChoices(wrapper).length
+    await getChoices(wrapper)[0].trigger('click')
+    await nextTick()
+
+    expect(getChoices(wrapper).length).toBe(beforeCount)
+    wrapper.unmount()
+  })
+
+  it('can select multiple items with checkboxes', async () => {
+    const wrapper = mountCheckboxSelect()
+    await openDropdown(wrapper)
+
+    await getChoices(wrapper)[0].trigger('click')
+    await nextTick()
+    await getChoices(wrapper)[1].trigger('click')
+    await nextTick()
+
+    const checkboxes = wrapper.findAll('[data-ui-select-checkbox]')
+    expect((checkboxes[0].element as HTMLInputElement).checked).toBe(true)
+    expect((checkboxes[1].element as HTMLInputElement).checked).toBe(true)
+    expect((checkboxes[2].element as HTMLInputElement).checked).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('checkbox has aria-hidden and tabindex=-1', async () => {
+    const wrapper = mountCheckboxSelect()
+    await openDropdown(wrapper)
+
+    const checkbox = wrapper.find('[data-ui-select-checkbox]')
+    expect(checkbox.attributes('aria-hidden')).toBe('true')
+    expect(checkbox.attributes('tabindex')).toBe('-1')
+    wrapper.unmount()
+  })
+
+  it('works with object items and trackBy', async () => {
+    const wrapper = mountSelect(
+      { multiple: true, removeSelected: false, closeOnSelect: false },
+      { items: people, trackBy: 'id', searchFields: ['name'], showCheckboxes: true },
+    )
+    await openDropdown(wrapper)
+
+    const choices = getChoices(wrapper)
+    await choices[0].trigger('click')
+    await nextTick()
+
+    expect((choices[0].find('[data-ui-select-checkbox]').element as HTMLInputElement).checked).toBe(true)
+    expect((choices[1].find('[data-ui-select-checkbox]').element as HTMLInputElement).checked).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('disabled choices cannot be toggled via checkbox', async () => {
+    const wrapper = mountSelect(
+      { multiple: true, removeSelected: false, closeOnSelect: false },
+      { items: colors, trackBy: undefined, searchFields: [], showCheckboxes: true, disableChoice: (item: string) => item === 'Red' },
+      { choiceSlot: ({ item }: any) => h('span', {}, String(item)) },
+    )
+    await openDropdown(wrapper)
+
+    const redChoice = getChoices(wrapper)[0]
+    await redChoice.trigger('click')
+    await nextTick()
+
+    expect((redChoice.find('[data-ui-select-checkbox]').element as HTMLInputElement).checked).toBe(false)
+    wrapper.unmount()
+  })
+})

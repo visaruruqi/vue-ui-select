@@ -201,3 +201,158 @@ test.describe('Accessibility', () => {
     await expect(select).toHaveAttribute('aria-expanded', 'true')
   })
 })
+
+test.describe('Checkbox selection', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/checkbox-selection')
+  })
+
+  test('page loads', async ({ page }) => {
+    await expect(page.getByTestId('page-checkbox-selection')).toBeVisible()
+  })
+
+  test('renders checkboxes inside dropdown choices', async ({ page }) => {
+    const select = page.getByTestId('cb-strings')
+    await select.click()
+    await page.waitForTimeout(300)
+
+    const checkboxes = select.locator('[data-ui-select-checkbox]')
+    await expect(checkboxes.first()).toBeVisible({ timeout: 5000 })
+    const count = await checkboxes.count()
+    expect(count).toBeGreaterThan(0)
+  })
+
+  test('checkbox gets checked on click', async ({ page }) => {
+    const select = page.getByTestId('cb-strings')
+    await select.click()
+    await page.waitForTimeout(300)
+
+    const firstChoice = select.locator('[data-ui-select-choice]').first()
+    await expect(firstChoice).toBeVisible({ timeout: 5000 })
+
+    const checkbox = firstChoice.locator('[data-ui-select-checkbox]')
+    await expect(checkbox).not.toBeChecked()
+
+    await firstChoice.click({ force: true })
+    await expect(checkbox).toBeChecked()
+  })
+
+  test('checkbox gets unchecked on second click (toggle off)', async ({ page }) => {
+    const select = page.getByTestId('cb-strings')
+    await select.click()
+    await page.waitForTimeout(300)
+
+    const firstChoice = select.locator('[data-ui-select-choice]').first()
+    await expect(firstChoice).toBeVisible({ timeout: 5000 })
+
+    // Check
+    await firstChoice.click({ force: true })
+    const checkbox = firstChoice.locator('[data-ui-select-checkbox]')
+    await expect(checkbox).toBeChecked()
+
+    // Uncheck
+    await firstChoice.click({ force: true })
+    await expect(checkbox).not.toBeChecked()
+  })
+
+  test('dropdown stays open after selecting', async ({ page }) => {
+    const select = page.getByTestId('cb-strings')
+    await select.click()
+    await page.waitForTimeout(300)
+
+    const firstChoice = select.locator('[data-ui-select-choice]').first()
+    await expect(firstChoice).toBeVisible({ timeout: 5000 })
+    await firstChoice.click({ force: true })
+
+    // Dropdown should still be visible
+    const dropdown = select.locator('[data-ui-select-dropdown]')
+    await expect(dropdown).toBeVisible()
+  })
+
+  test('can select multiple items with checkboxes', async ({ page }) => {
+    const select = page.getByTestId('cb-strings')
+    await select.click()
+    await page.waitForTimeout(300)
+
+    const choices = select.locator('[data-ui-select-choice]')
+    await expect(choices.first()).toBeVisible({ timeout: 5000 })
+
+    await choices.nth(0).click({ force: true })
+    await page.waitForTimeout(100)
+    await choices.nth(1).click({ force: true })
+
+    const cb0 = choices.nth(0).locator('[data-ui-select-checkbox]')
+    const cb1 = choices.nth(1).locator('[data-ui-select-checkbox]')
+    const cb2 = choices.nth(2).locator('[data-ui-select-checkbox]')
+
+    await expect(cb0).toBeChecked()
+    await expect(cb1).toBeChecked()
+    await expect(cb2).not.toBeChecked()
+  })
+
+  test('selected items remain visible in dropdown', async ({ page }) => {
+    const select = page.getByTestId('cb-strings')
+    await select.click()
+    await page.waitForTimeout(300)
+
+    const choices = select.locator('[data-ui-select-choice]')
+    await expect(choices.first()).toBeVisible({ timeout: 5000 })
+    const countBefore = await choices.count()
+
+    await choices.first().click({ force: true })
+    await page.waitForTimeout(100)
+    const countAfter = await choices.count()
+
+    expect(countAfter).toBe(countBefore)
+  })
+
+  test('dropdown closes when clicking outside', async ({ page }) => {
+    const select = page.getByTestId('cb-strings')
+    await select.click()
+    await page.waitForTimeout(300)
+
+    const dropdown = select.locator('[data-ui-select-dropdown]')
+    await expect(dropdown).toBeVisible({ timeout: 5000 })
+
+    // Click outside
+    await page.locator('h2').first().click({ force: true })
+    await expect(dropdown).not.toBeVisible({ timeout: 5000 })
+  })
+
+  test('search + checkbox: filters and selects', async ({ page }) => {
+    const select = page.getByTestId('cb-search')
+    await select.click()
+    await page.waitForTimeout(300)
+
+    // Type a search term
+    const input = select.locator('[data-ui-select-input]')
+    await input.fill('Adam')
+    await page.waitForTimeout(500)
+
+    const choices = select.locator('[data-ui-select-choice]')
+    await expect(choices.first()).toBeVisible({ timeout: 5000 })
+
+    // Only filtered results should be shown
+    const count = await choices.count()
+    expect(count).toBeGreaterThanOrEqual(1)
+
+    // Select filtered item
+    await choices.first().click({ force: true })
+    await page.waitForTimeout(300)
+
+    // Verify selection via tag
+    const tags = select.locator('[data-ui-select-tag]')
+    await expect(tags.first()).toBeVisible({ timeout: 5000 })
+  })
+
+  test('default example does NOT show checkboxes', async ({ page }) => {
+    const select = page.getByTestId('cb-default')
+    await select.click()
+    await page.waitForTimeout(300)
+
+    await expect(select.locator('[data-ui-select-choice]').first()).toBeVisible({ timeout: 5000 })
+
+    const checkboxes = select.locator('[data-ui-select-checkbox]')
+    expect(await checkboxes.count()).toBe(0)
+  })
+})
