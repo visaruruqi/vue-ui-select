@@ -21,7 +21,10 @@
   "homepage": "https://vue-ui-select.vercel.app",
   "repository": {
     "type": "git",
-    "url": ""
+    "url": "git+https://github.com/visaruruqi/vue-ui-select.git"
+  },
+  "bugs": {
+    "url": "https://github.com/visaruruqi/vue-ui-select/issues"
   },
   "main": "./dist/vue-ui-select.umd.cjs",
   "module": "./dist/vue-ui-select.es.js",
@@ -48,6 +51,7 @@
   "devDependencies": {
     "@playwright/test": "^1.42.0",
     "@types/node": "^20.11.0",
+    "@vercel/analytics": "^1.6.1",
     "@vitejs/plugin-vue": "^5.0.0",
     "@vue/test-utils": "^2.4.0",
     "autoprefixer": "^10.4.0",
@@ -73,8 +77,5 @@
     "test:all": "vitest run && npx playwright test",
     "typecheck": "vue-tsc --noEmit",
     "prepublishOnly": "npm run build"
-  },
-  "dependencies": {
-    "@vercel/analytics": "^1.6.1"
   }
 }
