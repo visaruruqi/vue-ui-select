@@ -19,6 +19,7 @@ function makeOpts(overrides: Record<string, any> = {}) {
     tagging: ref(overrides.tagging ?? false),
     taggingTokens: ref(overrides.taggingTokens ?? [',']),
     disableChoice: ref(overrides.disableChoice ?? undefined),
+    clearable: ref(overrides.clearable ?? false),
     open: overrides.open ?? vi.fn(),
     close: overrides.close ?? vi.fn(),
     selectItem: overrides.selectItem ?? vi.fn(),
@@ -26,6 +27,7 @@ function makeOpts(overrides: Record<string, any> = {}) {
     isItemSelected: overrides.isItemSelected ?? (() => false),
     createTag: overrides.createTag ?? ((s: string) => s),
     focus: overrides.focus ?? vi.fn(),
+    clearSelection: overrides.clearSelection ?? vi.fn(),
     dropdownRef: ref(overrides.dropdownRef ?? null),
     inputRef: ref(overrides.inputRef ?? null),
     emit: overrides.emit ?? vi.fn(),
@@ -254,6 +256,88 @@ describe('useSelectKeyboard', () => {
 
       expect(close).not.toHaveBeenCalled()
       expect(focus).not.toHaveBeenCalled()
+    })
+
+    it('does not preventDefault or stopPropagation when dropdown is closed', () => {
+      const opts = makeOpts({ isOpen: false })
+      const { handleKeyDown } = useSelectKeyboard(opts)
+      const event = keyEvent('Escape')
+
+      handleKeyDown(event)
+
+      expect(event.preventDefault).not.toHaveBeenCalled()
+      expect(event.stopPropagation).not.toHaveBeenCalled()
+    })
+
+    it('does not act on Enter during IME composition (isComposing)', () => {
+      const items = [{ id: 1 }]
+      const selectItem = vi.fn()
+      const opts = makeOpts({ isOpen: true, items, activeIndex: 0, selectItem })
+      const { handleKeyDown } = useSelectKeyboard(opts)
+
+      handleKeyDown(keyEvent('Enter', { isComposing: true }))
+      expect(selectItem).not.toHaveBeenCalled()
+    })
+
+    it('does not act on Enter during IME composition (keyCode 229)', () => {
+      const items = [{ id: 1 }]
+      const selectItem = vi.fn()
+      const opts = makeOpts({ isOpen: true, items, activeIndex: 0, selectItem })
+      const { handleKeyDown } = useSelectKeyboard(opts)
+
+      handleKeyDown(keyEvent('Enter', { keyCode: 229 } as any))
+      expect(selectItem).not.toHaveBeenCalled()
+    })
+
+    it('clears single-mode selection on Backspace with empty search and clearable', () => {
+      const clearSelection = vi.fn()
+      const opts = makeOpts({
+        multiple: false,
+        clearable: true,
+        selected: { id: 1 },
+        clearSelection,
+      })
+      const { handleKeyDown } = useSelectKeyboard(opts)
+      handleKeyDown(keyEvent('Backspace'))
+      expect(clearSelection).toHaveBeenCalled()
+    })
+
+    it('does not clear single-mode selection on Backspace when not clearable', () => {
+      const clearSelection = vi.fn()
+      const opts = makeOpts({
+        multiple: false,
+        clearable: false,
+        selected: { id: 1 },
+        clearSelection,
+      })
+      const { handleKeyDown } = useSelectKeyboard(opts)
+      handleKeyDown(keyEvent('Backspace'))
+      expect(clearSelection).not.toHaveBeenCalled()
+    })
+
+    it('does not clear when search has content', () => {
+      const clearSelection = vi.fn()
+      const opts = makeOpts({
+        multiple: false,
+        clearable: true,
+        selected: { id: 1 },
+        search: 'foo',
+        clearSelection,
+      })
+      const { handleKeyDown } = useSelectKeyboard(opts)
+      handleKeyDown(keyEvent('Backspace'))
+      expect(clearSelection).not.toHaveBeenCalled()
+    })
+
+    it('preventDefault and stopPropagation when dropdown is open', () => {
+      const opts = makeOpts({ isOpen: true })
+      const { handleKeyDown } = useSelectKeyboard(opts)
+      const event = keyEvent('Escape')
+
+      handleKeyDown(event)
+
+      expect(event.preventDefault).toHaveBeenCalled()
+      expect(event.stopPropagation).toHaveBeenCalled()
     })
   })
 

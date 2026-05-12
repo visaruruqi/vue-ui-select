@@ -38,7 +38,12 @@ export function useSelectTagging(opts: {
 
     const tagFn = tagging.value
     if (typeof tagFn === 'function') {
-      return tagFn(searchText)
+      const result = tagFn(searchText)
+      // Reject null/undefined or strings that are empty after trimming.
+      // Object results are accepted as-is; consumers are responsible for shape.
+      if (result == null) return null
+      if (typeof result === 'string' && !result.trim()) return null
+      return result
     }
     return searchText
   }

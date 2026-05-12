@@ -1,4 +1,4 @@
-import { computed, ref, watch, type Ref, type ComputedRef } from 'vue'
+import { computed, type Ref, type ComputedRef } from 'vue'
 import { normalizeObjectSource, getNestedValue } from '../utils/objectSource'
 import type { GroupedItems, ChoicesConfig } from '../types'
 

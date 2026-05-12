@@ -2,6 +2,7 @@
 import {
   defineComponent,
   provide,
+  inject,
   toRef,
   toRefs,
   computed,
@@ -18,8 +19,9 @@ import type {
   ThemeName,
   ChoicesConfig,
   UiSelectContext,
+  UiSelectPluginOptions,
 } from '../types'
-import { UI_SELECT_CONTEXT } from '../symbols'
+import { UI_SELECT_CONTEXT, UI_SELECT_OPTIONS } from '../symbols'
 import { useSelectState } from '../composables/useSelectState'
 import { useModelBinding } from '../composables/useModelBinding'
 import { useSelectFiltering } from '../composables/useSelectFiltering'
@@ -37,12 +39,12 @@ export default defineComponent({
     modelValue: { type: null as unknown as PropType<any>, default: undefined },
     multiple: { type: Boolean, default: false },
     disabled: { type: Boolean, default: false },
-    searchEnabled: { type: Boolean, default: true },
+    searchEnabled: { type: Boolean as PropType<boolean | undefined>, default: undefined },
     resetSearchInput: { type: Boolean, default: true },
-    closeOnSelect: { type: Boolean, default: true },
-    appendToBody: { type: Boolean, default: false },
+    closeOnSelect: { type: Boolean as PropType<boolean | undefined>, default: undefined },
+    appendToBody: { type: Boolean as PropType<boolean | undefined>, default: undefined },
     position: { type: String as PropType<DropdownPosition>, default: 'auto' },
-    theme: { type: String as PropType<ThemeName>, default: 'tailwind' },
+    theme: { type: String as PropType<ThemeName | undefined>, default: undefined },
     placeholder: { type: String, default: '' },
     clearable: { type: Boolean, default: false },
     tagging: { type: [Boolean, Function] as PropType<boolean | ((search: string) => any)>, default: false },
@@ -58,6 +60,26 @@ export default defineComponent({
   emits: ['update:modelValue', 'select', 'remove', 'search', 'highlight', 'open', 'close', 'paste'],
   setup(props, { emit, attrs, expose }) {
     const propRefs = toRefs(props)
+
+    // ---- Plugin options (resolves theme + bool defaults when prop is omitted) ----
+    const pluginOptions = inject<UiSelectPluginOptions | null>(UI_SELECT_OPTIONS, null)
+    const effectiveTheme = computed<ThemeName>(
+      () => props.theme ?? pluginOptions?.theme ?? 'tailwind'
+    )
+    // Prop → plugin defaults → hard-coded default. Hardcoded values preserve
+    // current behavior so the plugin defaults block is purely additive.
+    const effectiveSearchEnabled = computed<boolean>(
+      () => props.searchEnabled ?? pluginOptions?.defaults?.searchEnabled ?? true
+    )
+    const effectiveCloseOnSelect = computed<boolean>(
+      () => props.closeOnSelect ?? pluginOptions?.defaults?.closeOnSelect ?? true
+    )
+    const effectiveAppendToBody = computed<boolean>(
+      () => props.appendToBody ?? pluginOptions?.defaults?.appendToBody ?? false
+    )
+    const effectiveClearable = computed<boolean>(
+      () => props.clearable ?? pluginOptions?.defaults?.clearable ?? false
+    )
 
     // ---- Choices config (registered by UiSelectChoices child) ----
     const choicesConfig = shallowRef<ChoicesConfig | null>(null)
@@ -77,13 +99,13 @@ export default defineComponent({
       multiple: propRefs.multiple,
       disabled: propRefs.disabled,
       loading: propRefs.loading,
-      searchEnabled: propRefs.searchEnabled,
+      searchEnabled: effectiveSearchEnabled,
       resetSearchInput: propRefs.resetSearchInput,
-      closeOnSelect: propRefs.closeOnSelect,
-      clearable: propRefs.clearable,
-      appendToBody: propRefs.appendToBody,
+      closeOnSelect: effectiveCloseOnSelect,
+      clearable: effectiveClearable,
+      appendToBody: effectiveAppendToBody,
       position: propRefs.position,
-      theme: propRefs.theme,
+      theme: effectiveTheme,
       placeholder: propRefs.placeholder,
       tagging: propRefs.tagging as any,
       taggingLabel: propRefs.taggingLabel as any,
@@ -155,6 +177,7 @@ export default defineComponent({
       tagging: propRefs.tagging as any,
       taggingTokens: propRefs.taggingTokens,
       disableChoice: computed(() => choicesConfig.value?.disableChoice?.value),
+      clearable: effectiveClearable,
       open: state.open,
       close: state.close,
       selectItem: handleSelect,
@@ -162,6 +185,7 @@ export default defineComponent({
       isItemSelected: model.isItemSelected,
       createTag: taggingUtil.createTag,
       focus: state.focus,
+      clearSelection: model.clearSelection,
       dropdownRef: state.dropdownRef,
       inputRef: state.inputRef,
       emit: emit as any,
@@ -170,7 +194,7 @@ export default defineComponent({
     // ---- Positioning ----
     const positioning = useSelectPositioning({
       isOpen: state.isOpen,
-      appendToBody: propRefs.appendToBody,
+      appendToBody: effectiveAppendToBody,
       position: propRefs.position,
       rootRef: state.rootRef,
       dropdownRef: state.dropdownRef,
@@ -187,10 +211,11 @@ export default defineComponent({
       flatFilteredItems: filtering.flatFilteredItems,
       placeholder: propRefs.placeholder,
       inputId: propRefs.inputId,
+      appendToBody: effectiveAppendToBody,
     })
 
     // ---- Theme ----
-    const themeClasses = useThemeClasses(propRefs.theme)
+    const themeClasses = useThemeClasses(effectiveTheme)
 
     // ---- Event handlers ----
     function handleSelect(item: any) {
@@ -208,7 +233,7 @@ export default defineComponent({
       }
 
       if (props.multiple) {
-        if (props.closeOnSelect) {
+        if (effectiveCloseOnSelect.value) {
           state.close()
         }
         nextTick(() => state.focus())
@@ -231,12 +256,17 @@ export default defineComponent({
       keyboard.handleSearchInput()
     })
 
+    // ---- Auto-close on disabled ----
+    watch(() => props.disabled, (val: boolean) => {
+      if (val && state.isOpen.value) state.close()
+    })
+
     // ---- Open/close watchers → emit events ----
     watch(state.isOpen, (val) => {
       if (val) {
         emit('open')
         nextTick(() => {
-          if (props.searchEnabled) {
+          if (effectiveSearchEnabled.value) {
             state.focus()
           }
         })
@@ -246,7 +276,7 @@ export default defineComponent({
     })
 
     // ---- Click outside handler ----
-    function handleClickOutside(e: MouseEvent) {
+    function handleClickOutside(e: Event) {
       if (!state.rootRef.value) return
       const target = e.target as Node
       if (state.rootRef.value.contains(target)) return
@@ -257,6 +287,7 @@ export default defineComponent({
 
     onMounted(() => {
       document.addEventListener('mousedown', handleClickOutside)
+      document.addEventListener('touchstart', handleClickOutside, { passive: true })
       if (props.autofocus) {
         nextTick(() => state.focus())
       }
@@ -264,6 +295,7 @@ export default defineComponent({
 
     onBeforeUnmount(() => {
       document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('touchstart', handleClickOutside)
     })
 
     // ---- Provide context to children ----
@@ -274,7 +306,7 @@ export default defineComponent({
       multiple: toRef(props, 'multiple'),
       disabled: toRef(props, 'disabled'),
       loading: toRef(props, 'loading'),
-      theme: toRef(props, 'theme'),
+      theme: effectiveTheme,
       position: toRef(props, 'position'),
       selected: model.selected,
       isItemSelected: model.isItemSelected,
@@ -285,11 +317,11 @@ export default defineComponent({
       filteredItems: filtering.filteredItems,
       groupedItems: filtering.groupedItems,
       flatFilteredItems: filtering.flatFilteredItems,
-      searchEnabled: toRef(props, 'searchEnabled'),
+      searchEnabled: effectiveSearchEnabled,
       resetSearchInput: toRef(props, 'resetSearchInput'),
-      closeOnSelect: toRef(props, 'closeOnSelect'),
-      clearable: toRef(props, 'clearable'),
-      appendToBody: toRef(props, 'appendToBody'),
+      closeOnSelect: effectiveCloseOnSelect,
+      clearable: effectiveClearable,
+      appendToBody: effectiveAppendToBody,
       placeholder: toRef(props, 'placeholder'),
       tagging: toRef(props, 'tagging') as any,
       taggingLabel: toRef(props, 'taggingLabel') as any,
@@ -310,9 +342,12 @@ export default defineComponent({
       inputRef: state.inputRef,
       dropdownRef: state.dropdownRef,
       uid: state.uid,
+      inputAriaAttrs: a11y.inputAriaAttrs,
       resolvedPosition: positioning.resolvedPosition,
       dropdownMaxHeight: positioning.dropdownMaxHeight,
+      teleportStyle: positioning.teleportStyle,
       handlePaste: keyboard.handlePaste,
+      handleKeyDown: keyboard.handleKeyDown,
     }
 
     provide(UI_SELECT_CONTEXT, context)
@@ -351,6 +386,8 @@ export default defineComponent({
       rootAriaAttrs: a11y.rootAriaAttrs,
       inputAriaAttrs: a11y.inputAriaAttrs,
       themeDataAttr: themeClasses.themeDataAttr,
+      effectiveTheme,
+      effectiveSearchEnabled,
       open: state.open,
       close: state.close,
       toggle: state.toggle,
@@ -368,7 +405,7 @@ export default defineComponent({
     v-bind="{ ...$attrs, ...rootAriaAttrs, ...themeDataAttr }"
     :class="[
       'ui-select',
-      `ui-select--${$props.theme}`,
+      `ui-select--${effectiveTheme}`,
       {
         'ui-select--open': isOpen,
         'ui-select--closed': !isOpen,
@@ -384,7 +421,7 @@ export default defineComponent({
     :data-disabled="$props.disabled || undefined"
     :data-multiple="$props.multiple || undefined"
     :data-position="resolvedPosition"
-    tabindex="0"
+    :tabindex="effectiveSearchEnabled ? -1 : 0"
     @keydown="handleKeyDown"
     @paste="handlePaste"
   >

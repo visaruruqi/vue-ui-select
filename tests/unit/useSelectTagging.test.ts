@@ -57,6 +57,21 @@ describe('useSelectTagging', () => {
       expect(createTag('   ')).toBeNull()
     })
 
+    it('returns null when user factory returns null/undefined', () => {
+      const nullFn = () => null
+      const undefinedFn = () => undefined
+      const { createTag: makeNull } = useSelectTagging(makeOpts({ tagging: nullFn }))
+      const { createTag: makeUndef } = useSelectTagging(makeOpts({ tagging: undefinedFn }))
+      expect(makeNull('hi')).toBeNull()
+      expect(makeUndef('hi')).toBeNull()
+    })
+
+    it('returns null when user factory returns whitespace-only string', () => {
+      const tagFn = () => '   '
+      const { createTag } = useSelectTagging(makeOpts({ tagging: tagFn }))
+      expect(createTag('hi')).toBeNull()
+    })
+
     it('returns null when multi-select limit is reached', () => {
       const { createTag } = useSelectTagging(makeOpts({
         tagging: true,

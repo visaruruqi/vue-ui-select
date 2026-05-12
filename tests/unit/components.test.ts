@@ -166,6 +166,191 @@ describe('UiSelect integration', () => {
     expect(root.attributes('role')).toBe('combobox')
     wrapper.unmount()
   })
+
+  it('binds ARIA attrs on the single-mode search input', async () => {
+    const wrapper = mountSelect({ searchEnabled: true })
+    const match = wrapper.find('[data-ui-select-match]')
+    await match.trigger('click')
+    await nextTick()
+    await nextTick()
+    const input = wrapper.find<HTMLInputElement>('input[data-ui-select-input]')
+    expect(input.exists()).toBe(true)
+    expect(input.attributes('role')).toBe('searchbox')
+    expect(input.attributes('aria-autocomplete')).toBe('list')
+    expect(input.attributes('aria-controls')).toBeTruthy()
+    expect(input.attributes('id')).toBeTruthy()
+    wrapper.unmount()
+  })
+
+  it('binds ARIA attrs on the multi-mode inline search input', async () => {
+    const wrapper = mountSelect({ modelValue: [], multiple: true, searchEnabled: true })
+    const input = wrapper.find<HTMLInputElement>('input[data-ui-select-input]')
+    expect(input.exists()).toBe(true)
+    expect(input.attributes('role')).toBe('searchbox')
+    expect(input.attributes('aria-autocomplete')).toBe('list')
+    expect(input.attributes('id')).toBeTruthy()
+    wrapper.unmount()
+  })
+
+  it('auto-closes dropdown when disabled becomes true', async () => {
+    const wrapper = mount(
+      defineComponent({
+        setup() {
+          const model = ref<any>(null)
+          const disabled = ref(false)
+          return { model, disabled }
+        },
+        render() {
+          return h(
+            UiSelect,
+            { modelValue: this.model, 'onUpdate:modelValue': (v: any) => { this.model = v }, disabled: this.disabled },
+            {
+              default: () => [
+                h(UiSelectMatch, { placeholder: 'pick' }),
+                h(UiSelectChoices, { items: people, trackBy: 'id' }, {
+                  choice: ({ item }: any) => h('span', String(item.name)),
+                }),
+              ],
+            }
+          )
+        },
+      }),
+      { attachTo: document.body }
+    )
+    const match = wrapper.find('[data-ui-select-match]')
+    await match.trigger('click')
+    await nextTick()
+    await nextTick()
+    expect(wrapper.find('[data-ui-select-dropdown]').exists()).toBe(true)
+    ;(wrapper.vm as any).disabled = true
+    await nextTick()
+    await nextTick()
+    expect(wrapper.find('[data-ui-select-dropdown]').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('renders #group-header slot with groupName scope', async () => {
+    const wrapper = mount(
+      defineComponent({
+        setup() {
+          const model = ref<any>(null)
+          return { model }
+        },
+        render() {
+          return h(
+            UiSelect,
+            { modelValue: this.model, 'onUpdate:modelValue': (v: any) => { this.model = v } },
+            {
+              default: () => [
+                h(UiSelectMatch, { placeholder: 'pick' }),
+                h(
+                  UiSelectChoices,
+                  { items: people, trackBy: 'id', groupBy: 'country' },
+                  {
+                    'group-header': ({ groupName }: any) =>
+                      h('span', { class: 'gh' }, `[${groupName}]`),
+                    choice: ({ item }: any) => h('span', String(item.name)),
+                  }
+                ),
+              ],
+            }
+          )
+        },
+      }),
+      { attachTo: document.body }
+    )
+    const match = wrapper.find('[data-ui-select-match]')
+    await match.trigger('click')
+    await nextTick()
+    await nextTick()
+    const headers = wrapper.findAll('.gh').map((h) => h.text())
+    expect(headers).toContain('[US]')
+    expect(headers).toContain('[UK]')
+    wrapper.unmount()
+  })
+
+  it('assigns distinct flat indices to duplicate primitive items', async () => {
+    const wrapper = mount(
+      defineComponent({
+        setup() {
+          const model = ref<any>(null)
+          return { model }
+        },
+        render() {
+          return h(
+            UiSelect,
+            { modelValue: this.model, 'onUpdate:modelValue': (v: any) => { this.model = v } },
+            {
+              default: () => [
+                h(UiSelectMatch, { placeholder: 'pick' }),
+                h(UiSelectChoices, { items: ['a', 'b', 'a'] }, {
+                  choice: ({ item }: any) => h('span', { class: 'choice-item' }, String(item)),
+                }),
+              ],
+            }
+          )
+        },
+      }),
+      { attachTo: document.body }
+    )
+    const match = wrapper.find('[data-ui-select-match]')
+    await match.trigger('click')
+    await nextTick()
+    await nextTick()
+    const rows = wrapper.findAll('[data-ui-select-choice]')
+    expect(rows).toHaveLength(3)
+    const indices = rows.map((r) => r.attributes('data-ui-select-choice-index'))
+    expect(indices).toEqual(['0', '1', '2'])
+    wrapper.unmount()
+  })
+
+  it('applies teleport positioning style when append-to-body is true', async () => {
+    const wrapper = mountSelect({ appendToBody: true })
+    const match = wrapper.find('[data-ui-select-match]')
+    await match.trigger('click')
+    await nextTick()
+    await nextTick()
+    const dropdown = document.querySelector<HTMLElement>('[data-ui-select-dropdown]')
+    expect(dropdown).toBeTruthy()
+    expect(dropdown!.style.position).toBe('absolute')
+    expect(dropdown!.style.zIndex).toBe('9999')
+    expect(dropdown!.style.left).toBeTruthy()
+    wrapper.unmount()
+  })
+
+  it('handles ArrowDown on teleported search input (append-to-body)', async () => {
+    const wrapper = mountSelect({ appendToBody: true, searchEnabled: true })
+    const match = wrapper.find('[data-ui-select-match]')
+    await match.trigger('click')
+    await nextTick()
+    await nextTick()
+    const input = document.querySelector<HTMLInputElement>('input[data-ui-select-input]')
+    expect(input).toBeTruthy()
+    input!.focus()
+    input!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
+    await nextTick()
+    const activeOption = document.querySelector('[aria-selected]')
+    expect(activeOption).toBeTruthy()
+    wrapper.unmount()
+  })
+
+  it('renders multi-mode #tag slot with item and removeItem', async () => {
+    const wrapper = mountSelect({
+      modelValue: [people[0], people[1]],
+      multiple: true,
+    })
+    const tags = wrapper.findAll('.tag')
+    expect(tags).toHaveLength(2)
+    expect(tags[0].text()).toBe('Alice')
+    expect(tags[1].text()).toBe('Bob')
+
+    await tags[0].trigger('click')
+    await nextTick()
+    const tagsAfter = wrapper.findAll('.tag')
+    expect(tagsAfter).toHaveLength(1)
+    expect(tagsAfter[0].text()).toBe('Bob')
+    wrapper.unmount()
+  })
 })
 
 describe('UiSelectNoChoice', () => {

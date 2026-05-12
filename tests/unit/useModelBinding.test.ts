@@ -69,12 +69,36 @@ describe('useModelBinding', () => {
       expect(emit).toHaveBeenCalledWith('update:modelValue', null)
     })
 
+    it('isItemSelected is robust to object key ordering (no trackBy)', () => {
+      const a = { foo: 1, bar: 2 }
+      const b = { bar: 2, foo: 1 }
+      const { isItemSelected, selectItem } = useModelBinding(makeOpts())
+      selectItem(a)
+      expect(isItemSelected(b)).toBe(true)
+    })
+
     it('isItemSelected returns correct boolean', () => {
       const item = { id: 1, name: 'Alice' }
       const { isItemSelected, selectItem } = useModelBinding(makeOpts())
       expect(isItemSelected(item)).toBe(false)
       selectItem(item)
       expect(isItemSelected(item)).toBe(true)
+    })
+
+    it('selectItem(null) is a no-op (single mode)', () => {
+      const emit = vi.fn()
+      const { selected, selectItem } = useModelBinding(makeOpts({ emit }))
+      selectItem(null)
+      expect(selected.value).toBeNull()
+      expect(emit).not.toHaveBeenCalled()
+    })
+
+    it('selectItem(undefined) is a no-op (single mode)', () => {
+      const emit = vi.fn()
+      const { selected, selectItem } = useModelBinding(makeOpts({ emit }))
+      selectItem(undefined)
+      expect(selected.value).toBeNull()
+      expect(emit).not.toHaveBeenCalled()
     })
   })
 
@@ -101,6 +125,43 @@ describe('useModelBinding', () => {
       selectItem({ id: 1 })
       selectItem({ id: 2 })
       expect(selected.value).toHaveLength(2)
+    })
+
+    it('reshapes selected when multiple flips from false to true', async () => {
+      const multiple = ref(false)
+      const emit = vi.fn()
+      const item = { id: 1 }
+      const { selected, selectItem } = useModelBinding(makeOpts({ multiple, emit }))
+      selectItem(item)
+      expect(selected.value).toEqual(item)
+      multiple.value = true
+      await nextTick()
+      expect(Array.isArray(selected.value)).toBe(true)
+      expect(selected.value).toHaveLength(1)
+      expect(selected.value[0]).toEqual(item)
+    })
+
+    it('reshapes selected when multiple flips from true to false', async () => {
+      const multiple = ref(true)
+      const emit = vi.fn()
+      const { selected, selectItem } = useModelBinding(makeOpts({ multiple, emit }))
+      selectItem({ id: 1 })
+      selectItem({ id: 2 })
+      multiple.value = false
+      await nextTick()
+      expect(Array.isArray(selected.value)).toBe(false)
+      expect(selected.value).toEqual({ id: 1 })
+    })
+
+    it('selectItem(null) does not push null into array', () => {
+      const emit = vi.fn()
+      const { selected, selectItem } = useModelBinding(
+        makeOpts({ multiple: ref(true), emit })
+      )
+      selectItem(null)
+      selectItem(undefined)
+      expect(selected.value).toEqual([])
+      expect(emit).not.toHaveBeenCalled()
     })
 
     it('selectItem does not add duplicate (trackBy)', () => {

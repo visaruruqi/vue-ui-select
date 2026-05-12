@@ -1,5 +1,5 @@
 <script lang="ts">
-import { defineComponent, inject, onMounted, useSlots } from 'vue'
+import { defineComponent, inject, onBeforeUnmount, useSlots } from 'vue'
 import { UI_SELECT_CONTEXT } from '../symbols'
 import type { UiSelectContext } from '../types'
 
@@ -15,6 +15,12 @@ export default defineComponent({
     }
 
     ctx.registerNoChoiceContent(renderFn)
+
+    onBeforeUnmount(() => {
+      if (ctx.noChoiceContent.value === renderFn) {
+        ctx.noChoiceContent.value = null
+      }
+    })
 
     // This component renders nothing — its content is rendered by UiSelectChoices
     return () => null

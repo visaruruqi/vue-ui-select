@@ -11,6 +11,7 @@ export function useSelectKeyboard(opts: {
   tagging: Ref<boolean | ((search: string) => any)>
   taggingTokens: Ref<string[]>
   disableChoice: Ref<((item: any) => boolean) | undefined>
+  clearable?: Ref<boolean>
 
   open: () => void
   close: () => void
@@ -19,6 +20,7 @@ export function useSelectKeyboard(opts: {
   isItemSelected: (item: any) => boolean
   createTag: (search: string) => any
   focus: () => void
+  clearSelection?: () => void
 
   dropdownRef: Ref<HTMLElement | null>
   inputRef: Ref<HTMLInputElement | null>
@@ -28,9 +30,9 @@ export function useSelectKeyboard(opts: {
   const {
     isOpen, search, activeIndex, flatFilteredItems,
     multiple, disabled, selected, tagging, taggingTokens,
-    disableChoice,
-    open, close, selectItem, removeItem, isItemSelected,
-    createTag, focus,
+    disableChoice, clearable,
+    open, close, selectItem, removeItem,
+    createTag, focus, clearSelection,
     dropdownRef, emit,
   } = opts
 
@@ -48,10 +50,7 @@ export function useSelectKeyboard(opts: {
       idx += direction
       if (idx < 0) idx = max - 1
       if (idx >= max) idx = 0
-      const item = items[idx]
-      if (!isChoiceDisabled(item) && !isItemSelected(item)) return idx
-      // If removeSelected is false, items may be in list but disabled-looking
-      if (!isChoiceDisabled(item)) return idx
+      if (!isChoiceDisabled(items[idx])) return idx
     }
     return -1
   }
@@ -61,11 +60,16 @@ export function useSelectKeyboard(opts: {
     const el = dropdownRef.value.querySelector(
       `[data-ui-select-choice-index="${activeIndex.value}"]`
     ) as HTMLElement | null
-    el?.scrollIntoView({ block: 'nearest' })
+    if (el && typeof el.scrollIntoView === 'function') {
+      el.scrollIntoView({ block: 'nearest' })
+    }
   }
 
   function handleKeyDown(e: KeyboardEvent) {
     if (disabled.value) return
+    // Skip during IME composition (CJK input). keyCode 229 is the legacy IME signal.
+    // eslint-disable-next-line @typescript-eslint/no-deprecated
+    if (e.isComposing || e.keyCode === 229) return
 
     const items = flatFilteredItems.value
 
@@ -115,8 +119,9 @@ export function useSelectKeyboard(opts: {
       }
 
       case 'Escape': {
-        e.preventDefault()
         if (isOpen.value) {
+          e.preventDefault()
+          e.stopPropagation()
           close()
           focus()
         }
@@ -132,10 +137,14 @@ export function useSelectKeyboard(opts: {
       }
 
       case 'Backspace': {
-        if (multiple.value && search.value === '') {
-          const arr = Array.isArray(selected.value) ? selected.value : []
-          if (arr.length > 0) {
-            removeItem(arr[arr.length - 1])
+        if (search.value === '') {
+          if (multiple.value) {
+            const arr = Array.isArray(selected.value) ? selected.value : []
+            if (arr.length > 0) {
+              removeItem(arr[arr.length - 1])
+            }
+          } else if (clearable?.value && selected.value != null && clearSelection) {
+            clearSelection()
           }
         }
         break
@@ -219,12 +228,15 @@ export function useSelectKeyboard(opts: {
     }
   }
 
+  let isHandlingTokens = false
+
   /**
    * Called after `search` changes (via `@input` or v-model watcher).
    * Handles token characters that slip past the keydown handler — e.g. from
    * mobile soft-keyboards, IME, or browser auto-fill.
    */
   function handleSearchInput() {
+    if (isHandlingTokens) return
     if (!tagging.value || taggingTokens.value.length === 0) return
 
     const val = search.value
@@ -239,12 +251,16 @@ export function useSelectKeyboard(opts: {
     const re = new RegExp(`[${escaped.join('')}]`)
     const parts = val.split(re).map((s) => s.trim()).filter(Boolean)
 
-    // Clear search first to avoid re-triggering
-    search.value = ''
-
-    for (const part of parts) {
-      const tag = createTag(part)
-      if (tag != null) selectItem(tag)
+    // Set guard so the recursive search-watcher fires only once (for the empty value).
+    isHandlingTokens = true
+    try {
+      search.value = ''
+      for (const part of parts) {
+        const tag = createTag(part)
+        if (tag != null) selectItem(tag)
+      }
+    } finally {
+      isHandlingTokens = false
     }
   }
 

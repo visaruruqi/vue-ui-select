@@ -140,11 +140,18 @@ export default defineComponent({
           data-ui-select-tag=""
           data-testid="ui-select-tag"
         >
-          <slot :item="unwrapObjectSourceItem(item)" :remove="handleRemoveItem" :is-locked="isItemLocked(item)">
+          <slot
+            name="tag"
+            :item="unwrapObjectSourceItem(item)"
+            :index="idx"
+            :remove="handleRemoveItem"
+            :removeItem="handleRemoveItem"
+            :isLocked="isItemLocked(item)"
+          >
             {{ typeof unwrapObjectSourceItem(item) === 'object' ? JSON.stringify(unwrapObjectSourceItem(item)) : unwrapObjectSourceItem(item) }}
           </slot>
           <button
-            v-if="!isItemLocked(item) && !ctx.disabled.value"
+            v-if="!$slots.tag && !isItemLocked(item) && !ctx.disabled.value"
             class="ui-select-match__tag-remove"
             type="button"
             data-ui-select-tag-remove=""
@@ -169,7 +176,7 @@ export default defineComponent({
           autocomplete="off"
           :placeholder="selectedItems.length === 0 ? resolvedPlaceholder : ''"
           :disabled="ctx.disabled.value"
-          v-bind="{ id: ctx.inputId.value || undefined }"
+          v-bind="ctx.inputAriaAttrs.value"
           @click.stop="ctx.open()"
           @focus="ctx.open()"
           @paste="ctx.handlePaste"

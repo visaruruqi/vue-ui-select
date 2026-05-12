@@ -24,6 +24,7 @@ This library brings that same philosophy to Vue 3. The richer the slot and prop 
 - **Dropdown positioning** — auto, up, or down
 - **4 built-in themes** — Tailwind CSS, Bootstrap, Select2, Selectize
 - **Dark mode** — Tailwind theme supports `.dark` / `[data-theme="dark"]`
+- **App-wide defaults** — set `searchEnabled`, `clearable`, `appendToBody`, `closeOnSelect` once via plugin options
 - **TypeScript** — full type definitions included
 - **Composable architecture** — every feature is a standalone composable
 
@@ -46,6 +47,23 @@ const app = createApp(App)
 app.use(UiSelectPlugin)
 app.mount('#app')
 ```
+
+#### Plugin options
+
+```ts
+app.use(UiSelectPlugin, {
+  theme: 'tailwind',        // 'tailwind' | 'bootstrap' | 'select2' | 'selectize'
+  prefix: '',               // optional component name prefix (e.g. 'My' → MyUiSelect)
+  defaults: {
+    searchEnabled: false,   // turn search off everywhere by default
+    clearable: true,        // show the clear (×) on every instance
+    appendToBody: true,     // teleport every dropdown to <body>
+    closeOnSelect: false,   // keep dropdown open after each pick
+  },
+})
+```
+
+Per-instance props always win: `<ui-select :search-enabled="true">` overrides the plugin default. Defaults are applied only when the prop is omitted, so existing code that doesn't pass these props will pick up the global value automatically.
 
 ### Individual imports
 
@@ -366,29 +384,30 @@ Show checkboxes next to each item — great for "pick many without closing the d
 
 ### `<ui-select>` Props
 
+Props marked † can also be set as plugin-wide defaults — see [Plugin options](#plugin-options).
+
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
 | `v-model` | `any` | — | Selected value (object, primitive, or array for multi) |
 | `multiple` | `boolean` | `false` | Enable multi-select mode |
 | `disabled` | `boolean` | `false` | Disable the component |
-| `clearable` | `boolean` | `false` | Show clear button |
-| `search-enabled` | `boolean` | `true` | Enable search/filter |
+| `clearable` † | `boolean` | `false` | Show clear button |
+| `search-enabled` † | `boolean` | `true` | Enable search/filter |
 | `reset-search-input` | `boolean` | `true` | Clear search on close |
-| `close-on-select` | `boolean` | `true` | Close dropdown after selection |
-| `append-to-body` | `boolean` | `false` | Teleport dropdown to `<body>` |
+| `close-on-select` † | `boolean` | `true` | Close dropdown after selection |
+| `append-to-body` † | `boolean` | `false` | Teleport dropdown to `<body>` |
 | `position` | `'auto' \| 'up' \| 'down'` | `'auto'` | Dropdown position |
 | `theme` | `string` | `'tailwind'` | Theme name |
 | `placeholder` | `string` | `''` | Placeholder text |
 | `tagging` | `boolean \| Function` | `false` | Enable tagging, or provide a factory function |
-| `tagging-label` | `string \| false` | `false` | Label for new tag row |
-| `tagging-tokens` | `string[]` | `[]` | Characters that trigger tag creation |
+| `tagging-label` | `string \| false` | `'(new)'` | Label for new tag row |
+| `tagging-tokens` | `string[]` | `[',']` | Characters that trigger tag creation |
 | `limit` | `number` | — | Max selections in multi mode |
-| `remove-selected` | `boolean` | `false` | Hide selected items from dropdown |
+| `remove-selected` | `boolean` | `true` | Hide selected items from dropdown |
 | `loading` | `boolean` | `false` | Show loading spinner |
 | `autofocus` | `boolean` | `false` | Focus on mount |
 | `input-id` | `string` | — | Custom ID for the search input |
 | `lock-choice` | `Function` | — | Predicate: locked items cannot be removed |
-| `bind-property` | `string` | — | Emit a nested property instead of full object |
 
 ### `<ui-select>` Events
 
@@ -398,6 +417,7 @@ Show checkboxes next to each item — great for "pick many without closing the d
 | `select` | `{ item, model }` | Item selected |
 | `remove` | `{ item, model }` | Item removed |
 | `search` | `string` | Search text changed |
+| `highlight` | `any` | Active option changed (keyboard navigation) |
 | `open` | — | Dropdown opened |
 | `close` | — | Dropdown closed |
 
@@ -414,6 +434,7 @@ Show checkboxes next to each item — great for "pick many without closing the d
 |------|------|---------|-------------|
 | `items` | `any[] \| Record<string, any>` | `[]` | Items source |
 | `track-by` | `string \| Function` | — | Identity key/function |
+| `bind-property` | `string` | — | Emit a nested property instead of full object |
 | `search-fields` | `string[]` | `[]` | Fields to search |
 | `filter-fn` | `Function` | — | Custom filter function |
 | `group-by` | `string \| Function` | — | Group by property or function |

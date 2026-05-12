@@ -48,6 +48,7 @@ export type {
   UiSelectEmits,
   UiSelectContext,
   UiSelectPluginOptions,
+  UiSelectPluginDefaults,
   ChoiceSlotScope,
   MatchSingleSlotScope,
   MatchMultiSlotScope,

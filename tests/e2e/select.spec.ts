@@ -119,10 +119,13 @@ test.describe('Append to body', () => {
   test('dropdown escapes overflow container', async ({ page }) => {
     const select = page.locator('[data-ui-select]').first()
     await select.click()
-    // When append-to-body is true, dropdown should be a direct child of body
+    // When append-to-body is true, dropdown should be a direct child of body.
     const dropdown = page.locator('body > [data-ui-select-dropdown]')
-    // Would exist if teleported
-    await page.waitForTimeout(300)
+    await expect(dropdown).toBeVisible()
+    // And teleport positioning style must be applied (blocker #2 regression).
+    const style = await dropdown.getAttribute('style')
+    expect(style).toMatch(/position:\s*absolute/)
+    expect(style).toMatch(/z-index:\s*9999/)
   })
 })
 

@@ -1,7 +1,11 @@
-import { ref, computed, watch, type Ref } from 'vue'
+import * as VueRuntime from 'vue'
+import { ref, watch, type Ref } from 'vue'
 import type { DropdownPosition, ThemeName } from '../types'
 
+// Vue 3.5+ ships useId(), which is SSR-safe and produces stable IDs across
+// server/client. Fall back to a module-level counter on older Vue versions.
 let uidCounter = 0
+const vueUseId = (VueRuntime as any).useId as (() => string) | undefined
 
 export function useSelectState(props: {
   modelValue: Ref<any>
@@ -25,7 +29,11 @@ export function useSelectState(props: {
   autofocus: Ref<boolean>
   limit: Ref<number | undefined>
 }) {
-  const uid = `ui-select-${++uidCounter}`
+  let generatedId: string | undefined
+  if (vueUseId && (VueRuntime as any).getCurrentInstance?.()) {
+    generatedId = vueUseId()
+  }
+  const uid = generatedId ? `ui-select-${generatedId}` : `ui-select-${++uidCounter}`
   const isOpen = ref(false)
   const search = ref('')
   const activeIndex = ref(-1)

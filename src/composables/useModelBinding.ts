@@ -1,6 +1,23 @@
 import { ref, watch, computed, type Ref } from 'vue'
 import { resolveTrackBy, resolveBindValue } from '../utils/objectSource'
 
+/**
+ * Serializes a value with sorted object keys so { a: 1, b: 2 } and { b: 2, a: 1 }
+ * compare equal. Used for trackBy-less object equality where consumers may
+ * round-trip values through serialization.
+ */
+function stableStringify(val: any): string {
+  return JSON.stringify(val, (_key, v) => {
+    if (v && typeof v === 'object' && !Array.isArray(v)) {
+      return Object.keys(v).sort().reduce<Record<string, any>>((acc, k) => {
+        acc[k] = v[k]
+        return acc
+      }, {})
+    }
+    return v
+  })
+}
+
 export function useModelBinding(opts: {
   modelValue: Ref<any>
   multiple: Ref<boolean>
@@ -69,12 +86,27 @@ export function useModelBinding(opts: {
   function findItemByBoundValue(val: any): any {
     return rawItems.value.find((item: any) => {
       const bv = resolveBindValue(item, bindProperty.value)
-      return bv === val || JSON.stringify(bv) === JSON.stringify(val)
+      return bv === val || stableStringify(bv) === stableStringify(val)
     })
   }
 
   // Hydrate on mount and when modelValue changes externally
   watch(modelValue, hydrateSelected, { immediate: true })
+
+  // Reconcile when `multiple` prop flips at runtime. Without this, the internal
+  // selected ref keeps its old shape (scalar vs array) and array-only paths crash.
+  watch(multiple, (isMulti) => {
+    if (isMulti) {
+      if (!Array.isArray(selected.value)) {
+        selected.value = selected.value != null ? [selected.value] : []
+      }
+    } else {
+      if (Array.isArray(selected.value)) {
+        selected.value = selected.value.length > 0 ? selected.value[0] : null
+      }
+    }
+    emitModelValue()
+  })
 
   // Re-hydrate when items change (async hydration support).
   // Only re-hydrate when rawItems is non-empty so that clearing
@@ -131,12 +163,13 @@ export function useModelBinding(opts: {
       return resolveTrackBy(a, tby) === resolveTrackBy(b, tby)
     }
     if (typeof a === 'object' && typeof b === 'object') {
-      return JSON.stringify(a) === JSON.stringify(b)
+      return stableStringify(a) === stableStringify(b)
     }
     return false
   }
 
   function selectItem(item: any) {
+    if (item == null) return
     if (multiple.value) {
       const arr = Array.isArray(selected.value) ? [...selected.value] : []
       if (!isItemSelected(item)) {

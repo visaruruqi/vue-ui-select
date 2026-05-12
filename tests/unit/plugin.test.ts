@@ -4,6 +4,7 @@
 
 import { describe, it, expect, vi } from 'vitest'
 import { createApp, defineComponent, h } from 'vue'
+import { mount } from '@vue/test-utils'
 import { UiSelectPlugin, UiSelect, UiSelectMatch, UiSelectChoices, UiSelectNoChoice } from '../../src/index'
 import { UI_SELECT_OPTIONS } from '../../src/symbols'
 
@@ -71,6 +72,53 @@ describe('UiSelectPlugin', () => {
     // Kebab-case with prefix
     expect(app.component('Myui-select')).toBeDefined()
     expect(app.component('Myui-select-match')).toBeDefined()
+  })
+
+  it('applies plugin theme to UiSelect when no theme prop is set', () => {
+    const wrapper = mount(UiSelect, {
+      global: { plugins: [[UiSelectPlugin, { theme: 'select2' }]] },
+    })
+    expect(wrapper.find('.ui-select').classes()).toContain('ui-select--select2')
+    wrapper.unmount()
+  })
+
+  it('prop theme overrides plugin theme', () => {
+    const wrapper = mount(UiSelect, {
+      props: { theme: 'bootstrap' },
+      global: { plugins: [[UiSelectPlugin, { theme: 'select2' }]] },
+    })
+    expect(wrapper.find('.ui-select').classes()).toContain('ui-select--bootstrap')
+    wrapper.unmount()
+  })
+
+  it('falls back to tailwind when neither prop nor plugin specify a theme', () => {
+    const wrapper = mount(UiSelect)
+    expect(wrapper.find('.ui-select').classes()).toContain('ui-select--tailwind')
+    wrapper.unmount()
+  })
+
+  it('applies plugin defaults for searchEnabled when prop is omitted', () => {
+    const wrapper = mount(UiSelect, {
+      global: { plugins: [[UiSelectPlugin, { defaults: { searchEnabled: false } }]] },
+    })
+    expect(wrapper.find('.ui-select').attributes('tabindex')).toBe('0')
+    wrapper.unmount()
+  })
+
+  it('per-instance searchEnabled prop overrides plugin default', () => {
+    const wrapper = mount(UiSelect, {
+      props: { searchEnabled: true },
+      global: { plugins: [[UiSelectPlugin, { defaults: { searchEnabled: false } }]] },
+    })
+    expect(wrapper.find('.ui-select').attributes('tabindex')).toBe('-1')
+    wrapper.unmount()
+  })
+
+  it('preserves built-in default when neither prop nor plugin default is set', () => {
+    const wrapper = mount(UiSelect)
+    // searchEnabled defaults to true → tabindex="-1" (input is the tab stop)
+    expect(wrapper.find('.ui-select').attributes('tabindex')).toBe('-1')
+    wrapper.unmount()
   })
 
   it('registers nothing when accessing unregistered names', () => {

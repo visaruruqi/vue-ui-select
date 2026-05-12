@@ -1,4 +1,4 @@
-import { ref, computed, onMounted, onBeforeUnmount, watch, type Ref, nextTick } from 'vue'
+import { ref, onBeforeUnmount, watch, type Ref, nextTick } from 'vue'
 import type { DropdownPosition } from '../types'
 
 export function useSelectPositioning(opts: {
@@ -70,12 +70,17 @@ export function useSelectPositioning(opts: {
 
   let scrollListener: (() => void) | null = null
   let resizeListener: (() => void) | null = null
+  let dropdownObserver: ResizeObserver | null = null
 
   function addListeners() {
     scrollListener = () => calculatePosition()
     resizeListener = () => calculatePosition()
     window.addEventListener('scroll', scrollListener, true)
     window.addEventListener('resize', resizeListener)
+    if (typeof ResizeObserver !== 'undefined' && dropdownRef.value) {
+      dropdownObserver = new ResizeObserver(() => calculatePosition())
+      dropdownObserver.observe(dropdownRef.value)
+    }
   }
 
   function removeListeners() {
@@ -87,6 +92,10 @@ export function useSelectPositioning(opts: {
       window.removeEventListener('resize', resizeListener)
       resizeListener = null
     }
+    if (dropdownObserver) {
+      dropdownObserver.disconnect()
+      dropdownObserver = null
+    }
   }
 
   watch(isOpen, async (val) => {
@@ -97,6 +106,11 @@ export function useSelectPositioning(opts: {
     } else {
       removeListeners()
     }
+  })
+
+  // Recalculate when position-influencing props change while open.
+  watch([position, appendToBody], () => {
+    if (isOpen.value) calculatePosition()
   })
 
   onBeforeUnmount(() => {

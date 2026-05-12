@@ -10,8 +10,9 @@ export function useSelectAccessibility(opts: {
   flatFilteredItems: ComputedRef<any[]>
   placeholder: Ref<string>
   inputId: Ref<string | undefined>
+  appendToBody?: Ref<boolean>
 }) {
-  const { uid, isOpen, activeIndex, multiple, disabled, flatFilteredItems, placeholder, inputId } = opts
+  const { uid, isOpen, activeIndex, multiple, disabled, flatFilteredItems, placeholder, inputId, appendToBody } = opts
 
   const listboxId = `${uid}-listbox`
   const inputElId = computed(() => inputId.value || `${uid}-input`)
@@ -28,7 +29,8 @@ export function useSelectAccessibility(opts: {
     role: 'combobox',
     'aria-expanded': isOpen.value,
     'aria-haspopup': 'listbox' as const,
-    'aria-owns': isOpen.value ? listboxId : undefined,
+    // aria-owns is only needed when the listbox is NOT a DOM descendant (teleported).
+    'aria-owns': isOpen.value && appendToBody?.value ? listboxId : undefined,
     'aria-disabled': disabled.value || undefined,
     'aria-multiselectable': multiple.value || undefined,
   }))

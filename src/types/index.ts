@@ -129,6 +129,7 @@ export interface MatchMultiSlotScope {
   item: any
   index: number
   remove: (item: any) => void
+  removeItem: (item: any) => void
   isLocked: boolean
 }
 
@@ -196,13 +197,18 @@ export interface UiSelectContext {
 
   // Unique IDs for a11y
   uid: string
+  inputAriaAttrs: ComputedRef<Record<string, any>>
 
   // Positioning
   resolvedPosition: Ref<'up' | 'down'>
   dropdownMaxHeight: Ref<string | undefined>
+  teleportStyle: Ref<Record<string, string>>
 
   // Paste handling (for token separators)
   handlePaste: (e: ClipboardEvent) => void
+
+  // Keyboard handling
+  handleKeyDown: (e: KeyboardEvent) => void
 }
 
 export interface ChoicesConfig {
@@ -222,7 +228,15 @@ export interface ChoicesConfig {
 
 // ---- Plugin options ----
 
+export interface UiSelectPluginDefaults {
+  searchEnabled?: boolean
+  clearable?: boolean
+  appendToBody?: boolean
+  closeOnSelect?: boolean
+}
+
 export interface UiSelectPluginOptions {
   theme?: ThemeName
   prefix?: string
+  defaults?: UiSelectPluginDefaults
 }

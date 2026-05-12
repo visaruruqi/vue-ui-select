@@ -1,5 +1,5 @@
 <script lang="ts">
-import { defineComponent, inject, onMounted, toRef, toRefs, computed, watch, h, type PropType } from 'vue'
+import { defineComponent, inject, toRef, computed, type PropType } from 'vue'
 import { UI_SELECT_CONTEXT } from '../symbols'
 import type { UiSelectContext, ChoicesConfig, ChoiceSlotScope } from '../types'
 import { highlightText } from '../utils/highlight'
@@ -44,21 +44,20 @@ export default defineComponent({
     // Register immediately for fast reactivity
     ctx.registerChoicesConfig(choicesConfig)
 
-    // Build flat index mapping for grouped items
-    const flatIndexMap = computed(() => {
-      const map = new Map<any, number>()
-      let idx = 0
+    // Pre-compute groups annotated with a positional flatIndex per item.
+    // Indexing by position (not by item identity) handles duplicate primitives
+    // and objects that share trackBy keys without collisions.
+    const indexedGroups = computed(() => {
+      const groups: { label: string | undefined; items: { item: any; flatIndex: number }[] }[] = []
+      let flatIndex = 0
       for (const group of ctx.groupedItems.value) {
-        for (const item of group.items) {
-          map.set(item, idx++)
-        }
+        groups.push({
+          label: group.label,
+          items: group.items.map((item: any) => ({ item, flatIndex: flatIndex++ })),
+        })
       }
-      return map
+      return groups
     })
-
-    function getFlatIndex(item: any): number {
-      return flatIndexMap.value.get(item) ?? -1
-    }
 
     function isChoiceDisabled(item: any): boolean {
       if (props.disableChoice) return props.disableChoice(item)
@@ -114,9 +113,21 @@ export default defineComponent({
 
     const hasNoChoiceContent = computed(() => ctx.noChoiceContent.value !== null)
 
+    const dropdownStyle = computed<Record<string, string>>(() => {
+      const style: Record<string, string> = {}
+      if (ctx.appendToBody.value && ctx.teleportStyle?.value) {
+        Object.assign(style, ctx.teleportStyle.value)
+      }
+      if (ctx.dropdownMaxHeight?.value) {
+        style.maxHeight = ctx.dropdownMaxHeight.value
+        style.overflowY = 'auto'
+      }
+      return style
+    })
+
     return {
       ctx,
-      getFlatIndex,
+      indexedGroups,
       isChoiceDisabled,
       getChoiceSlotScope,
       handleItemClick,
@@ -125,6 +136,7 @@ export default defineComponent({
       minimumLengthMessage,
       isEmpty,
       hasNoChoiceContent,
+      dropdownStyle,
     }
   },
 })
@@ -142,7 +154,7 @@ export default defineComponent({
           { 'ui-select__dropdown--up': ctx.resolvedPosition?.value === 'up' },
         ]"
         :data-position="ctx.resolvedPosition?.value"
-        :style="ctx.dropdownMaxHeight?.value ? { maxHeight: ctx.dropdownMaxHeight.value, overflowY: 'auto' as const } : {}"
+        :style="dropdownStyle"
         data-ui-select-dropdown=""
         data-testid="ui-select-dropdown"
         @mousedown.prevent
@@ -163,8 +175,9 @@ export default defineComponent({
             data-testid="ui-select-input"
             autocomplete="off"
             :placeholder="ctx.placeholder.value"
-            :id="ctx.inputId.value || undefined"
+            v-bind="ctx.inputAriaAttrs.value"
             @click.stop
+            @keydown.stop="ctx.handleKeyDown"
             @paste="ctx.handlePaste"
           />
         </div>
@@ -189,7 +202,7 @@ export default defineComponent({
           role="listbox"
           :id="ctx.uid + '-listbox'"
         >
-          <template v-for="(group, groupIdx) in ctx.groupedItems.value" :key="groupIdx">
+          <template v-for="(group, groupIdx) in indexedGroups" :key="groupIdx">
             <!-- Group header -->
             <div
               v-if="group.label !== undefined"
@@ -198,31 +211,31 @@ export default defineComponent({
               data-testid="ui-select-group-header"
               role="presentation"
             >
-              {{ group.label }}
+              <slot name="group-header" :groupName="group.label">{{ group.label }}</slot>
             </div>
 
             <!-- Group items -->
             <div
-              v-for="item in group.items"
-              :key="getFlatIndex(item)"
+              v-for="({ item, flatIndex }) in group.items"
+              :key="flatIndex"
               class="ui-select-choices__row"
               :class="{
-                'ui-select-choices__row--active': ctx.activeIndex.value === getFlatIndex(item),
+                'ui-select-choices__row--active': ctx.activeIndex.value === flatIndex,
                 'ui-select-choices__row--selected': ctx.isItemSelected(item),
                 'ui-select-choices__row--disabled': isChoiceDisabled(item),
               }"
-              :data-ui-select-choice-index="getFlatIndex(item)"
+              :data-ui-select-choice-index="flatIndex"
               data-ui-select-choice=""
               data-testid="ui-select-choice"
-              :data-active="ctx.activeIndex.value === getFlatIndex(item) || undefined"
+              :data-active="ctx.activeIndex.value === flatIndex || undefined"
               :data-selected="ctx.isItemSelected(item) || undefined"
               :data-disabled="isChoiceDisabled(item) || undefined"
               role="option"
-              :id="ctx.uid + '-option-' + getFlatIndex(item)"
+              :id="ctx.uid + '-option-' + flatIndex"
               :aria-selected="ctx.isItemSelected(item)"
               :aria-disabled="isChoiceDisabled(item) || undefined"
               @click="handleItemClick(item, $event)"
-              @mouseenter="handleItemMouseEnter(item, getFlatIndex(item))"
+              @mouseenter="handleItemMouseEnter(item, flatIndex)"
             >
               <input
                 v-if="showCheckboxes"
@@ -234,7 +247,7 @@ export default defineComponent({
                 aria-hidden="true"
                 @click.prevent
               />
-              <slot name="choice" v-bind="getChoiceSlotScope(item, getFlatIndex(item))">
+              <slot name="choice" v-bind="getChoiceSlotScope(item, flatIndex)">
                 {{ typeof item === 'object' ? JSON.stringify(item) : item }}
               </slot>
             </div>

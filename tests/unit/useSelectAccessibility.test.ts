@@ -17,6 +17,7 @@ function makeOpts(overrides: Record<string, any> = {}) {
     flatFilteredItems: computed(() => overrides.flatFilteredItems ?? []),
     placeholder: ref(overrides.placeholder ?? 'Select...'),
     inputId: ref(overrides.inputId ?? undefined),
+    appendToBody: ref(overrides.appendToBody ?? false),
   }
 }
 
@@ -42,9 +43,14 @@ describe('useSelectAccessibility', () => {
       expect(rootAriaAttrs.value['aria-haspopup']).toBe('listbox')
     })
 
-    it('sets aria-owns to listbox id when open', () => {
-      const { rootAriaAttrs } = useSelectAccessibility(makeOpts({ uid: 'test-1', isOpen: true }))
+    it('sets aria-owns when open AND teleported (listbox is not a DOM descendant)', () => {
+      const { rootAriaAttrs } = useSelectAccessibility(makeOpts({ uid: 'test-1', isOpen: true, appendToBody: true }))
       expect(rootAriaAttrs.value['aria-owns']).toBe('test-1-listbox')
+    })
+
+    it('omits aria-owns when open but listbox is a DOM descendant', () => {
+      const { rootAriaAttrs } = useSelectAccessibility(makeOpts({ isOpen: true, appendToBody: false }))
+      expect(rootAriaAttrs.value['aria-owns']).toBeUndefined()
     })
 
     it('unsets aria-owns when closed', () => {

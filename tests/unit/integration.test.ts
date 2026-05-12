@@ -245,13 +245,41 @@ describe('Multiple select', () => {
     wrapper.unmount()
   })
 
-  it('shows remove button on tags', () => {
+  it('shows built-in remove button on tags when no #tag slot is provided', () => {
+    const wrapper = mount(
+      defineComponent({
+        setup() {
+          const model = ref([people[0]])
+          return { model }
+        },
+        render() {
+          return h(
+            UiSelect,
+            { modelValue: this.model, 'onUpdate:modelValue': (v: any) => { this.model = v }, multiple: true },
+            {
+              default: () => [
+                h(UiSelectMatch, { placeholder: 'pick' }),
+                h(UiSelectChoices, { items: people, trackBy: 'id' }, {
+                  choice: ({ item }: any) => h('span', String(item.name)),
+                }),
+              ],
+            }
+          )
+        },
+      }),
+      { attachTo: document.body }
+    )
+    const removeBtn = wrapper.find('[data-testid="ui-select-tag-remove"]')
+    expect(removeBtn.exists()).toBe(true)
+    wrapper.unmount()
+  })
+
+  it('omits built-in remove button when a #tag slot is provided (consumer owns remove UI)', () => {
     const wrapper = mountSelect({
       modelValue: [people[0]],
       multiple: true,
     })
-    const removeBtn = wrapper.find('[data-testid="ui-select-tag-remove"]')
-    expect(removeBtn.exists()).toBe(true)
+    expect(wrapper.find('[data-testid="ui-select-tag-remove"]').exists()).toBe(false)
     wrapper.unmount()
   })
 
