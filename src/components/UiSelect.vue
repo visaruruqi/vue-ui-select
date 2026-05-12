@@ -261,6 +261,43 @@ export default defineComponent({
       if (val && state.isOpen.value) state.close()
     })
 
+    // ---- Validator-friendly DOM event listeners on the root ----
+    // External validators (oop-validator, VeeValidate, etc.) listen for native
+    // `input` / `blur` events on the form element. We dispatch them on the root
+    // <div> so the component participates in the same contract as a native <input>.
+    watch(model.selected, () => {
+      nextTick(dispatchInputEvent)
+    }, { deep: true, flush: 'post' })
+
+    // ---- Synthetic DOM events for validation library integration ----
+    // External validators (oop-validator, VeeValidate, hand-rolled) typically
+    // listen for `input` and `blur` on the form element. Since our root is a
+    // <div> we must dispatch these ourselves so the component participates in
+    // the same DOM-event contract as a native <input>.
+
+    /** Fires after every committed model change. */
+    function dispatchInputEvent() {
+      const root = state.rootRef.value
+      if (!root) return
+      root.dispatchEvent(new Event('input', { bubbles: true, cancelable: false }))
+    }
+
+    /**
+     * Fires when keyboard/pointer focus has truly left the widget. We treat
+     * root + (teleported) dropdown as one logical widget so internal focus
+     * moves (match → search input → dropdown row) don't fire spurious blur.
+     */
+    function handleFocusOut(e: FocusEvent) {
+      const root = state.rootRef.value
+      if (!root) return
+      const next = e.relatedTarget as Node | null
+      if (next) {
+        if (root.contains(next)) return
+        if (state.dropdownRef.value && state.dropdownRef.value.contains(next)) return
+      }
+      root.dispatchEvent(new Event('blur', { bubbles: false, cancelable: false }))
+    }
+
     // ---- Open/close watchers → emit events ----
     watch(state.isOpen, (val) => {
       if (val) {
@@ -288,6 +325,9 @@ export default defineComponent({
     onMounted(() => {
       document.addEventListener('mousedown', handleClickOutside)
       document.addEventListener('touchstart', handleClickOutside, { passive: true })
+      // focusout fires on every internal focus shift; the handler filters to true
+      // widget-exit before dispatching a synthetic `blur` on the root.
+      state.rootRef.value?.addEventListener('focusout', handleFocusOut)
       if (props.autofocus) {
         nextTick(() => state.focus())
       }
@@ -296,6 +336,7 @@ export default defineComponent({
     onBeforeUnmount(() => {
       document.removeEventListener('mousedown', handleClickOutside)
       document.removeEventListener('touchstart', handleClickOutside)
+      state.rootRef.value?.removeEventListener('focusout', handleFocusOut)
     })
 
     // ---- Provide context to children ----

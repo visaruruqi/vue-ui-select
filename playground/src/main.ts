@@ -3,6 +3,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { inject } from '@vercel/analytics'
 import App from './App.vue'
 import { UiSelectPlugin } from 'vue-ui-select'
+import { VueValidationPlugin } from 'oop-validator/vue'
 import { routes } from './router'
 
 // Tailwind utility classes for the playground layout & demo pages
@@ -44,6 +45,7 @@ router.afterEach((to) => {
 const app = createApp(App)
 app.use(router)
 app.use(UiSelectPlugin, { theme: 'tailwind' })
+app.use(VueValidationPlugin)
 app.mount('#app')
 
 // Vercel Analytics — auto-tracks page views

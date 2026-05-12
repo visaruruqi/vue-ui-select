@@ -446,3 +446,36 @@
   display: flex;
   align-items: center;
 }
+
+/* ---- Validator integration ----
+ * Classes (v-invalid, v-touched, v-invalid-required, etc.) are set by an
+ * external validator directive — e.g. oop-validator's v-required. Styles
+ * activate only when both v-invalid AND v-touched are present, matching the
+ * familiar AngularJS pattern of "don't show errors until the user has
+ * interacted with the field."
+ */
+.ui-select--tailwind.v-invalid.v-touched .ui-select-match {
+  border-color: #dc2626;
+}
+.ui-select--tailwind.v-invalid.v-touched.ui-select--open .ui-select-match,
+.ui-select--tailwind.v-invalid.v-touched:focus-within .ui-select-match {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.2);
+}
+
+/* Same treatment for native form controls when used alongside <ui-select>
+ * with the same validator. Scoped to (v-invalid AND v-touched) so it only
+ * activates when an opt-in validator (oop-validator / VeeValidate / hand-rolled
+ * using these class names) sets both classes. Inert otherwise. */
+input.v-invalid.v-touched,
+textarea.v-invalid.v-touched,
+select.v-invalid.v-touched {
+  border-color: #dc2626;
+}
+input.v-invalid.v-touched:focus,
+textarea.v-invalid.v-touched:focus,
+select.v-invalid.v-touched:focus {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.2);
+  outline: none;
+}

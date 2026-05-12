@@ -18,6 +18,7 @@ export const routes: RouteRecordRaw[] = [
   { path: '/checkbox-selection', component: () => import('./pages/CheckboxSelectionPage.vue'), meta: { title: 'Checkbox Selection', description: 'Multi-select with inline checkboxes rendered by ui-select-choices.' } },
   { path: '/object-as-source', component: () => import('./pages/ObjectAsSourcePage.vue'), meta: { title: 'Object As Source', description: 'Use an array of objects as the data source with custom display properties.' } },
   { path: '/tagging', component: () => import('./pages/TaggingPage.vue'), meta: { title: 'Tagging', description: 'Allow users to create new tags on the fly with the tagging feature.' } },
+  { path: '/form-validation', component: () => import('./pages/FormValidationPage.vue'), meta: { title: 'Form Validation', description: 'Validate vue-ui-select with oop-validator directives — v-required, v-minlength — without coupling.' } },
   { path: '/bootstrap-theme', component: () => import('./pages/BootstrapThemePage.vue'), meta: { title: 'Bootstrap Theme', description: 'vue-ui-select styled with the Bootstrap theme for Bootstrap-based projects.' } },
   { path: '/select2-theme', component: () => import('./pages/Select2ThemePage.vue'), meta: { title: 'Select2 Theme', description: 'vue-ui-select styled with the Select2 theme for a familiar jQuery Select2 look.' } },
   { path: '/selectize-theme', component: () => import('./pages/SelectizeThemePage.vue'), meta: { title: 'Selectize Theme', description: 'vue-ui-select styled with the Selectize theme for a clean, modern look.' } },

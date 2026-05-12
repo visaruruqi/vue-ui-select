@@ -25,6 +25,7 @@ This library brings that same philosophy to Vue 3. The richer the slot and prop 
 - **4 built-in themes** — Tailwind CSS, Bootstrap, Select2, Selectize
 - **Dark mode** — Tailwind theme supports `.dark` / `[data-theme="dark"]`
 - **App-wide defaults** — set `searchEnabled`, `clearable`, `appendToBody`, `closeOnSelect` once via plugin options
+- **Form-validator friendly** — dispatches native `input` / `blur` on the host so any DOM-event validator (oop-validator, VeeValidate, hand-rolled) works without coupling
 - **TypeScript** — full type definitions included
 - **Composable architecture** — every feature is a standalone composable
 
@@ -495,6 +496,99 @@ Add `.dark` to `<html>` or use `[data-theme="dark"]`:
 ```html
 <html class="dark">
 ```
+
+## Form validation
+
+`<ui-select>` dispatches native `input` and `blur` events on its root element, so it integrates with any DOM-event-based validator without coupling. The library knows nothing about specific validation packages — it just behaves like a native form control.
+
+### With oop-validator
+
+`v-required`, `v-minlength`, `v-pattern` and other directives drop directly onto `<ui-select>` the same way `ng-required` did in AngularJS:
+
+```html
+<form name="signup" v-submit="handleSubmit">
+  <ui-select
+    name="countryId"
+    v-model="formData.countryId"
+    v-required
+  >
+    <ui-select-match placeholder="Select a country...">
+      <template #default="{ selected }">{{ selected?.name }}</template>
+    </ui-select-match>
+    <ui-select-choices
+      :items="countries"
+      track-by="id"
+      bind-property="id"
+      :search-fields="['name']"
+    >
+      <template #choice="{ item }">{{ item.name }}</template>
+    </ui-select-choices>
+  </ui-select>
+
+  <div
+    v-show="form.fields.value?.countryId?.$touched || form.$submitted.value"
+    v-messages="form.fields.value?.countryId?.$error ?? {}"
+  >
+    <span v-message="'required'">Please pick a country.</span>
+  </div>
+</form>
+```
+
+```ts
+import { useForm } from 'oop-validator/vue'
+
+const formData = reactive({ countryId: null })
+const form = useForm('signup', formData)
+
+function handleSubmit() {
+  // form.$valid is true here
+}
+```
+
+### Custom rules for multi-select
+
+oop-validator's built-in `v-minlength` only works on strings — register a custom rule that implements `IValidationRule` for "pick at least N":
+
+```ts
+import { IValidationRule } from 'oop-validator'
+
+class MinSelectionsRule extends IValidationRule {
+  private min = 1
+  private msg = ''
+  constructor(min = 1) { super(); this.min = min }
+  isValid(value: unknown): [boolean, string] {
+    const arr = value == null ? [] : value
+    if (!Array.isArray(arr)) return [false, 'Value must be a list.']
+    const ok = arr.length >= this.min
+    return [ok, ok ? '' : (this.msg || `Pick at least ${this.min}.`)]
+  }
+  isMatch(type: string) { return type.toLowerCase() === 'minselections' }
+  setParams(params: { length?: number }) {
+    if (params?.length != null) this.min = params.length
+  }
+  setErrorMessage(message: string) { this.msg = message }
+}
+
+const rule = new MinSelectionsRule(2)
+rule.setErrorMessage('Pick at least 2 languages.')
+form.registerRule('languages', 'minSelections', rule)
+//                  ↑
+//                  rule scoped to this field only — does not bleed to other fields on the same form
+```
+
+See the [Form Validation page](https://vue-ui-select.vercel.app/form-validation) for a full working demo.
+
+### Validation styling
+
+When a validator sets `v-invalid` AND `v-touched` on `<ui-select>` (or on a native `<input>` / `<textarea>` / `<select>` inside your forms), the theme CSS shows a red border. The classes are inert until a validator activates them, so consumers not using validation see no styling difference.
+
+Per-rule classes (`v-invalid-required`, `v-invalid-minlength`, etc.) are also set on the host element — useful for targeting specific failure states in custom CSS.
+
+**Multi-theme note:** the theme CSS files all define rules for native `<input>` / `<textarea>` / `<select>` (using each theme's red palette). If you import more than one theme in the same app, the last-imported theme's red wins on native form controls due to CSS source order. Most projects only need one theme; if you need finer control, import the theme you actually use and override `.v-invalid.v-touched` colors in your own stylesheet.
+
+### Validator-agnostic
+
+Nothing above is specific to oop-validator — the integration is just two native DOM events (`input`, `blur`) plus CSS class names (`v-invalid`, `v-touched`, etc.). Any validator that observes those events and toggles those classes (VeeValidate with a custom adapter, hand-rolled, etc.) works the same way. `vue-ui-select` has zero runtime dependency on any validation library.
 
 ## Migration from AngularJS ui-select
 
