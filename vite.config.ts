@@ -1,9 +1,24 @@
-import { defineConfig } from 'vite'
+import { defineConfig, Plugin } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { resolve } from 'path'
+import { cpSync, existsSync } from 'fs'
+
+function copyThemes(): Plugin {
+  return {
+    name: 'copy-themes',
+    apply: 'build',
+    closeBundle() {
+      const src = resolve(__dirname, 'src/themes')
+      const dest = resolve(__dirname, 'dist/themes')
+      if (existsSync(src)) {
+        cpSync(src, dest, { recursive: true })
+      }
+    },
+  }
+}
 
 export default defineConfig({
-  plugins: [vue()],
+  plugins: [vue(), copyThemes()],
   resolve: {
     alias: {
       '@': resolve(__dirname, 'src'),
