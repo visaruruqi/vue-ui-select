@@ -236,7 +236,9 @@ export default defineComponent({
         if (effectiveCloseOnSelect.value) {
           state.close()
         }
-        nextTick(() => state.focus())
+        // Same reason as on open: returning focus after a pick must not move the
+        // page out from under the user mid-selection.
+        nextTick(() => state.focus({ preventScroll: true }))
       } else {
         state.close()
       }
@@ -304,7 +306,10 @@ export default defineComponent({
         emit('open')
         nextTick(() => {
           if (effectiveSearchEnabled.value) {
-            state.focus()
+            // preventScroll: opening a dropdown must never move the page. The
+            // search input can be teleported far down the document, and letting
+            // the browser scroll it into view yanks the user away from the form.
+            state.focus({ preventScroll: true })
           }
         })
       } else {

@@ -1,5 +1,11 @@
 import { ref, onBeforeUnmount, watch, type Ref, nextTick } from 'vue'
 import type { DropdownPosition } from '../types'
+import {
+  canScrollFurther,
+  findScrollableAncestor,
+  isScrollable,
+  normalizeWheelDelta,
+} from '../utils/scrollChaining'
 
 export function useSelectPositioning(opts: {
   isOpen: Ref<boolean>
@@ -68,9 +74,40 @@ export function useSelectPositioning(opts: {
     }
   }
 
+  /**
+   * Teleporting to <body> takes the dropdown out of the scroll container it
+   * visually belongs to, and the browser chains wheel scrolling along DOM
+   * ancestors. So a wheel over an open dropdown reaches <body> — which app
+   * shells routinely leave at overflow:hidden — and the page stops scrolling
+   * entirely until the dropdown closes.
+   *
+   * Bridge that gap: anything scrollable inside the dropdown gets the scroll
+   * first, and only what is left over is handed to the select's own container.
+   */
+  function handleDropdownWheel(event: WheelEvent) {
+    const dropdownEl = dropdownRef.value
+    if (!appendToBody.value || !dropdownEl) return
+
+    // First refusal to the dropdown's own scrollers (the choices list).
+    let node = event.target as HTMLElement | null
+    while (node && dropdownEl.contains(node)) {
+      if (isScrollable(node, 'y') && canScrollFurther(node, event.deltaY, 'y')) return
+      node = node.parentElement
+    }
+
+    const container = findScrollableAncestor(rootRef.value, 'y')
+    if (!container || !canScrollFurther(container, event.deltaY, 'y')) return
+
+    // preventDefault only once there is something of ours to scroll, so the
+    // browser's own chaining still applies in every other case.
+    event.preventDefault()
+    container.scrollTop += normalizeWheelDelta(event, container.clientHeight)
+  }
+
   let scrollListener: (() => void) | null = null
   let resizeListener: (() => void) | null = null
   let dropdownObserver: ResizeObserver | null = null
+  let wheelTarget: HTMLElement | null = null
 
   function addListeners() {
     scrollListener = () => calculatePosition()
@@ -80,6 +117,11 @@ export function useSelectPositioning(opts: {
     if (typeof ResizeObserver !== 'undefined' && dropdownRef.value) {
       dropdownObserver = new ResizeObserver(() => calculatePosition())
       dropdownObserver.observe(dropdownRef.value)
+    }
+    // Only teleported dropdowns need the bridge; in place, chaining already works.
+    if (appendToBody.value && dropdownRef.value) {
+      wheelTarget = dropdownRef.value
+      wheelTarget.addEventListener('wheel', handleDropdownWheel, { passive: false })
     }
   }
 
@@ -96,6 +138,10 @@ export function useSelectPositioning(opts: {
       dropdownObserver.disconnect()
       dropdownObserver = null
     }
+    if (wheelTarget) {
+      wheelTarget.removeEventListener('wheel', handleDropdownWheel)
+      wheelTarget = null
+    }
   }
 
   watch(isOpen, async (val) => {
@@ -110,7 +156,11 @@ export function useSelectPositioning(opts: {
 
   // Recalculate when position-influencing props change while open.
   watch([position, appendToBody], () => {
-    if (isOpen.value) calculatePosition()
+    if (!isOpen.value) return
+    calculatePosition()
+    // appendToBody decides whether the wheel bridge is needed, so rebind it.
+    removeListeners()
+    addListeners()
   })
 
   onBeforeUnmount(() => {

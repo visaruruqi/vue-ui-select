@@ -59,8 +59,15 @@ export function useSelectState(props: {
     else open()
   }
 
-  function focus() {
-    inputRef.value?.focus()
+  /**
+   * `options` exists for the focus we trigger ourselves when the dropdown opens:
+   * the search input sits inside a dropdown that may be teleported to <body>, and
+   * the browser's default focus behaviour scrolls to reveal it — jerking the page
+   * away from whatever the user was reading. Callers of the public focus() get
+   * the normal, scrolling behaviour.
+   */
+  function focus(options?: FocusOptions) {
+    inputRef.value?.focus(options)
   }
 
   function blur() {
