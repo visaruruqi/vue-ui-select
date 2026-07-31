@@ -10,7 +10,6 @@ import type { ChoicesConfig } from '../../src/types'
 function makeChoicesConfig(overrides: Partial<Record<keyof ChoicesConfig, any>> = {}): ChoicesConfig {
   return {
     items: ref(overrides.items ?? []),
-    sourceType: ref(overrides.sourceType ?? 'array'),
     trackBy: ref(overrides.trackBy),
     bindProperty: ref(overrides.bindProperty),
     searchFields: ref(overrides.searchFields ?? []),
@@ -20,7 +19,6 @@ function makeChoicesConfig(overrides: Partial<Record<keyof ChoicesConfig, any>> 
     disableChoice: ref(overrides.disableChoice),
     sortFn: ref(overrides.sortFn),
     minimumInputLength: ref(overrides.minimumInputLength ?? 0),
-    refreshDelay: ref(overrides.refreshDelay ?? 0),
   }
 }
 
@@ -49,7 +47,7 @@ describe('useSelectFiltering', () => {
 
     it('normalizes object source into { key, value } pairs', () => {
       const { rawItems } = useSelectFiltering(
-        makeOpts({ items: { r: 'Red', g: 'Green' }, sourceType: 'object' })
+        makeOpts({ items: { r: 'Red', g: 'Green' } })
       )
       expect(rawItems.value).toEqual([
         { key: 'r', value: 'Red' },

@@ -27,6 +27,7 @@ function makeOpts(overrides: Record<string, any> = {}) {
     isItemSelected: overrides.isItemSelected ?? (() => false),
     createTag: overrides.createTag ?? ((s: string) => s),
     focus: overrides.focus ?? vi.fn(),
+    focusHost: overrides.focusHost ?? vi.fn(),
     clearSelection: overrides.clearSelection ?? vi.fn(),
     dropdownRef: ref(overrides.dropdownRef ?? null),
     inputRef: ref(overrides.inputRef ?? null),
@@ -234,16 +235,34 @@ describe('useSelectKeyboard', () => {
   })
 
   describe('Escape', () => {
-    it('closes dropdown and refocuses', () => {
+    it('closes dropdown and refocuses the root in single mode', () => {
       const close = vi.fn()
       const focus = vi.fn()
-      const opts = makeOpts({ isOpen: true, close, focus })
+      const focusHost = vi.fn()
+      const opts = makeOpts({ isOpen: true, close, focus, focusHost })
+      const { handleKeyDown } = useSelectKeyboard(opts)
+
+      handleKeyDown(keyEvent('Escape'))
+
+      expect(close).toHaveBeenCalled()
+      // The single-mode input unmounts with the dropdown — focusing it would
+      // let keyboard focus fall to <body>; the root is the safe target.
+      expect(focusHost).toHaveBeenCalled()
+      expect(focus).not.toHaveBeenCalled()
+    })
+
+    it('closes dropdown and refocuses the match input in multiple mode', () => {
+      const close = vi.fn()
+      const focus = vi.fn()
+      const focusHost = vi.fn()
+      const opts = makeOpts({ isOpen: true, multiple: true, close, focus, focusHost })
       const { handleKeyDown } = useSelectKeyboard(opts)
 
       handleKeyDown(keyEvent('Escape'))
 
       expect(close).toHaveBeenCalled()
       expect(focus).toHaveBeenCalled()
+      expect(focusHost).not.toHaveBeenCalled()
     })
 
     it('does nothing when dropdown is already closed', () => {

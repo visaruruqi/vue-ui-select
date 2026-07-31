@@ -56,18 +56,15 @@ export interface UiSelectProps {
 
 export interface UiSelectChoicesProps {
   items?: any[] | Record<string, any>
-  sourceType?: 'array' | 'object'
   trackBy?: string | ((item: any) => any)
   bindProperty?: string
   searchFields?: string[]
   filterFn?: (item: any, search: string) => boolean
   groupBy?: string | ((item: any) => string | undefined)
   groupFilter?: string[] | ((groups: string[]) => string[])
-  groupSelectable?: boolean
   disableChoice?: (item: any) => boolean
   sortFn?: (a: any, b: any) => number
   minimumInputLength?: number
-  refreshDelay?: number
   showCheckboxes?: boolean
 }
 
@@ -209,11 +206,15 @@ export interface UiSelectContext {
 
   // Keyboard handling
   handleKeyDown: (e: KeyboardEvent) => void
+
+  // Tagging — the "(new)" row UiSelectChoices renders for a novel search term
+  shouldShowTagRow: () => boolean
+  getTagRowLabel: () => string
+  selectSearchAsTag: () => void
 }
 
 export interface ChoicesConfig {
   items: Ref<any[] | Record<string, any>>
-  sourceType: Ref<'array' | 'object'>
   trackBy: Ref<string | ((item: any) => any) | undefined>
   bindProperty: Ref<string | undefined>
   searchFields: Ref<string[]>
@@ -223,7 +224,6 @@ export interface ChoicesConfig {
   disableChoice: Ref<((item: any) => boolean) | undefined>
   sortFn: Ref<((a: any, b: any) => number) | undefined>
   minimumInputLength: Ref<number>
-  refreshDelay: Ref<number>
 }
 
 // ---- Plugin options ----

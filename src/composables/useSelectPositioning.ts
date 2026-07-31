@@ -108,10 +108,23 @@ export function useSelectPositioning(opts: {
   let resizeListener: (() => void) | null = null
   let dropdownObserver: ResizeObserver | null = null
   let wheelTarget: HTMLElement | null = null
+  let repositionFrame = 0
+
+  // The scroll listener is capture-phase on window, so it fires for EVERY scroll
+  // anywhere in the document — including the dropdown's own list. Recalculating
+  // synchronously per event means a getBoundingClientRect (forced layout) per
+  // scroll tick; coalesce to one recalculation per frame instead.
+  function scheduleReposition() {
+    if (repositionFrame) return
+    repositionFrame = requestAnimationFrame(() => {
+      repositionFrame = 0
+      calculatePosition()
+    })
+  }
 
   function addListeners() {
-    scrollListener = () => calculatePosition()
-    resizeListener = () => calculatePosition()
+    scrollListener = () => scheduleReposition()
+    resizeListener = () => scheduleReposition()
     window.addEventListener('scroll', scrollListener, true)
     window.addEventListener('resize', resizeListener)
     if (typeof ResizeObserver !== 'undefined' && dropdownRef.value) {
@@ -141,6 +154,10 @@ export function useSelectPositioning(opts: {
     if (wheelTarget) {
       wheelTarget.removeEventListener('wheel', handleDropdownWheel)
       wheelTarget = null
+    }
+    if (repositionFrame) {
+      cancelAnimationFrame(repositionFrame)
+      repositionFrame = 0
     }
   }
 

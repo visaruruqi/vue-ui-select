@@ -15,8 +15,8 @@ export function useSelectFiltering(opts: {
     const cfg = choicesConfig.value
     if (!cfg) return []
     const items = cfg.items.value
-    // Auto-detect plain objects (Records / dictionaries) and normalise them,
-    // regardless of whether sourceType is explicitly set to 'object'.
+    // Plain objects (Records / dictionaries) are auto-detected and normalised;
+    // arrays pass through as-is.
     if (items && typeof items === 'object' && !Array.isArray(items)) {
       return normalizeObjectSource(items as Record<string, any>)
     }
@@ -86,15 +86,17 @@ export function useSelectFiltering(opts: {
       items: map.get(label)!,
     }))
 
-    // Apply group filter
+    // Apply group filter. Both forms keep the ungrouped (undefined-label) group,
+    // sorted last — the array form used to silently drop items that lacked the
+    // groupBy property, while the function form kept them.
     const gf = cfg.groupFilter.value
     if (gf) {
       if (Array.isArray(gf)) {
-        groups = groups.filter((g) => g.label !== undefined && gf.includes(g.label))
+        groups = groups.filter((g) => g.label === undefined || gf.includes(g.label))
         groups.sort((a, b) => {
-          const ai = gf.indexOf(a.label!)
-          const bi = gf.indexOf(b.label!)
-          return ai - bi
+          if (a.label === undefined) return 1
+          if (b.label === undefined) return -1
+          return gf.indexOf(a.label) - gf.indexOf(b.label)
         })
       } else if (typeof gf === 'function') {
         const labels = groups.map((g) => g.label).filter((l): l is string => l !== undefined)
@@ -153,14 +155,12 @@ function matchesSearch(item: any, query: string, fields: string[]): boolean {
     })
   }
 
-  // Search all string/number values (including key for object-source items)
-  const searchable = isObjectSourceItem(item)
-    ? [item.key, ...Object.values(target)]
-    : Object.values(target)
-  return searchable.some((val) => {
-    if (val == null) return false
-    if (typeof val === 'string') return val.toLowerCase().includes(query)
-    if (typeof val === 'number') return String(val).includes(query)
-    return false
-  })
+  // Object items with no declared search-fields pass through: the component
+  // only filters what it was told to filter. The old fallback matched against
+  // EVERY field, which silently re-filtered remote results — an API answering
+  // a code or fuzzy query had its rows dropped unless the consumer knew to
+  // pass filter-fn="() => true". A remote list now works with no config, and
+  // a local object list that stops narrowing is a loud dev-time signal to add
+  // search-fields. Primitive items keep matching by value (see above).
+  return true
 }

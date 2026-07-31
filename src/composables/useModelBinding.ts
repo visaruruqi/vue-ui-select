@@ -48,11 +48,16 @@ export function useModelBinding(opts: {
         selected.value = mv
           .map((v: any) => findItemByBoundValue(v))
           .filter(Boolean)
-        // Keep unresolved values as-is (for async hydration later)
-        const resolved = selected.value.map((it: any) =>
-          resolveBindValue(it, bindProperty.value)
+        // Keep unresolved values as-is (for async hydration later). Compare via
+        // stableStringify, matching findItemByBoundValue — with `includes` (===)
+        // an object-valued bound key resolved structurally would also count as
+        // unresolved and be appended a second time.
+        const resolvedKeys = new Set(
+          selected.value.map((it: any) =>
+            stableStringify(resolveBindValue(it, bindProperty.value))
+          )
         )
-        const unresolved = mv.filter((v: any) => !resolved.includes(v))
+        const unresolved = mv.filter((v: any) => !resolvedKeys.has(stableStringify(v)))
         if (unresolved.length) {
           // Store unresolved primitives directly so they can be hydrated later
           selected.value = [...selected.value, ...unresolved]

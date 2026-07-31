@@ -16,6 +16,7 @@ This library brings that same philosophy to Vue 3. The richer the slot and prop 
 
 - **Single & multi-select** — strings, objects, or dictionaries
 - **Type-ahead search** — client-side filtering with configurable search fields
+- **Remote search** — `debounce` the `search` event and feed `items` from an API
 - **Grouping** — `group-by` string property or function, with `group-filter`
 - **Tagging** — create new items on the fly, with token separators
 - **Keyboard navigation** — Arrow keys, Enter, Escape, Tab, Backspace
@@ -158,6 +159,10 @@ Just add `:search-fields` and you get type-ahead filtering for free:
 ```
 
 Want to search multiple fields? Pass them all in: `:search-fields="['name', 'email', 'city']"`
+
+> Object items are only filtered by the fields you declare — with none declared they
+> pass through untouched (that's what makes API-backed search work with zero config).
+> Plain strings and numbers always match by value, no config needed.
 
 ---
 
@@ -381,6 +386,97 @@ Show checkboxes next to each item — great for "pick many without closing the d
 </ui-select>
 ```
 
+### Remote search (API-backed)
+
+The rule that decides everything here: **`debounce` delays only the `search` event —
+filtering is never debounced.** So local lists need nothing, and remote lists need the
+four pieces below.
+
+```vue
+<template>
+  <ui-select
+    v-model="company"
+    search-enabled
+    :debounce="300"
+    :loading="searching"
+    @search="onSearch"
+  >
+    <ui-select-match placeholder="Search by company name or code">
+      <template #default="{ selected }">{{ selected?.name ?? '' }}</template>
+    </ui-select-match>
+
+    <!-- No search-fields: object items with none declared are NOT re-filtered
+         client-side, so the API's rows render exactly as returned. -->
+    <ui-select-choices
+      :items="companies"
+      :track-by="'id'"
+      :minimum-input-length="MIN_SEARCH_LENGTH"
+    >
+      <template #choice="{ item }">{{ item?.name }}</template>
+    </ui-select-choices>
+
+    <ui-select-no-choice>No companies found</ui-select-no-choice>
+  </ui-select>
+</template>
+
+<script setup>
+import { ref } from 'vue'
+
+const MIN_SEARCH_LENGTH = 2
+
+const company = ref(null)
+const companies = ref([])
+const searching = ref(false)
+
+let latestSearchId = 0
+
+async function onSearch(term) {
+  if (!term || term.length < MIN_SEARCH_LENGTH) {
+    companies.value = []
+    return
+  }
+
+  const searchId = ++latestSearchId
+  searching.value = true
+
+  try {
+    const { data } = await api.searchCompanies(term)
+    // A newer search has already gone out — this response is stale.
+    if (searchId !== latestSearchId) return
+    companies.value = data ?? []
+  } catch (error) {
+    if (searchId !== latestSearchId) return
+    companies.value = []
+  } finally {
+    if (searchId === latestSearchId) searching.value = false
+  }
+}
+</script>
+```
+
+**Why no `search-fields` here?** The component only filters what you tell it to filter:
+object items with no declared `search-fields` (and no `filter-fn`) pass through as-is,
+because the assumption is that whoever supplied the items — your API — already filtered
+them. Declare `search-fields` and you opt back into client-side filtering. One caveat:
+**primitive items always filter by value**, so a remote list of plain strings still needs
+`:filter-fn="() => true"` to keep server rows the term doesn't literally contain.
+
+**Keep the request-id guard even with `debounce`.** Debouncing collapses one burst of
+keystrokes into a single request; it does not order responses. Type `hil`, pause, type
+`ton`, and two requests are in flight — the first can still land last.
+
+**An empty term arrives immediately**, not after the delay: clearing the input or closing
+the dropdown emits `search` with `''` straight away, which is your cue to drop the
+results. The early return above handles it.
+
+**Local search needs none of this** — give `<ui-select-choices>` a `search-fields` array
+and filtering happens in the component. `debounce` is only worth adding offline if your
+own `search` handler does something costly (writing a query param, analytics, a store
+round-trip).
+
+> **Coming from AngularJS?** `refresh` is the `search` event and `refresh-delay` is the
+> `debounce` prop — which now sits on `<ui-select>`, next to the event it modifies.
+
 ## API Reference
 
 ### `<ui-select>` Props
@@ -406,6 +502,7 @@ Props marked † can also be set as plugin-wide defaults — see [Plugin options
 | `limit` | `number` | — | Max selections in multi mode |
 | `remove-selected` | `boolean` | `true` | Hide selected items from dropdown |
 | `loading` | `boolean` | `false` | Show loading spinner |
+| `debounce` | `number` | `0` | Milliseconds to wait after typing stops before emitting `search`. Filtering stays instant |
 | `autofocus` | `boolean` | `false` | Focus on mount |
 | `input-id` | `string` | — | Custom ID for the search input |
 | `lock-choice` | `Function` | — | Predicate: locked items cannot be removed |
@@ -436,14 +533,13 @@ Props marked † can also be set as plugin-wide defaults — see [Plugin options
 | `items` | `any[] \| Record<string, any>` | `[]` | Items source |
 | `track-by` | `string \| Function` | — | Identity key/function |
 | `bind-property` | `string` | — | Emit a nested property instead of full object |
-| `search-fields` | `string[]` | `[]` | Fields to search |
-| `filter-fn` | `Function` | — | Custom filter function |
+| `search-fields` | `string[]` | `[]` | Fields to search. Object items with none declared are NOT filtered (strings/numbers always match by value) |
+| `filter-fn` | `Function` | — | Custom filter function; overrides `search-fields` |
 | `group-by` | `string \| Function` | — | Group by property or function |
 | `group-filter` | `string[] \| Function` | — | Filter/reorder groups |
 | `disable-choice` | `Function` | — | Predicate: disable specific items |
 | `sort-fn` | `Function` | — | Custom sort function |
 | `minimum-input-length` | `number` | `0` | Min chars before showing results |
-| `refresh-delay` | `number` | `0` | Debounce delay for search |
 | `show-checkboxes` | `boolean` | `false` | Show inline checkboxes in dropdown choices |
 
 ### `<ui-select-choices>` Slots
@@ -452,6 +548,8 @@ Props marked † can also be set as plugin-wide defaults — see [Plugin options
 |------|-------|-------------|
 | `choice` | `{ item, index, search, highlighted, isActive, isSelected, isDisabled }` | Item row |
 | `group-header` | `{ groupName }` | Group header |
+| `tag-row` | `{ search, label }` | The "(new)" create-tag row shown for a novel term when tagging |
+| `minimum-length` | `{ remaining, minimum }` | Localizable "type N more characters" message |
 
 ### `<ui-select-no-choice>` Slots
 
@@ -610,6 +708,8 @@ Nothing above is specific to oop-validator — the integration is just two nativ
 | `close-on-select` | `:close-on-select="false"` |
 | `append-to-body` | `:append-to-body="true"` |
 | `theme` attribute | `theme` prop |
+| `refresh="load($select.search)"` | `@search="load"` |
+| `refresh-delay="300"` | `:debounce="300"` on `<ui-select>` |
 
 ## Development
 

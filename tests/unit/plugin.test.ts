@@ -105,9 +105,13 @@ describe('UiSelectPlugin', () => {
     wrapper.unmount()
   })
 
+  // tabindex is the observable for searchEnabled resolution, but only in
+  // MULTIPLE mode: there the match-row input is the tab stop, so the root drops
+  // to -1 when search is on. A single-mode select keeps tabindex 0 regardless —
+  // its input lives inside the dropdown and doesn't exist while closed.
   it('per-instance searchEnabled prop overrides plugin default', () => {
     const wrapper = mount(UiSelect, {
-      props: { searchEnabled: true },
+      props: { searchEnabled: true, multiple: true },
       global: { plugins: [[UiSelectPlugin, { defaults: { searchEnabled: false } }]] },
     })
     expect(wrapper.find('.ui-select').attributes('tabindex')).toBe('-1')
@@ -115,9 +119,17 @@ describe('UiSelectPlugin', () => {
   })
 
   it('preserves built-in default when neither prop nor plugin default is set', () => {
-    const wrapper = mount(UiSelect)
-    // searchEnabled defaults to true → tabindex="-1" (input is the tab stop)
+    const wrapper = mount(UiSelect, { props: { multiple: true } })
+    // searchEnabled defaults to true → tabindex="-1" (match input is the tab stop)
     expect(wrapper.find('.ui-select').attributes('tabindex')).toBe('-1')
+    wrapper.unmount()
+  })
+
+  it('single mode stays tabbable even with search enabled', () => {
+    const wrapper = mount(UiSelect, { props: { searchEnabled: true } })
+    // The single-mode search input only exists while the dropdown is open, so
+    // the root must remain the tab stop or the widget is keyboard-unreachable.
+    expect(wrapper.find('.ui-select').attributes('tabindex')).toBe('0')
     wrapper.unmount()
   })
 

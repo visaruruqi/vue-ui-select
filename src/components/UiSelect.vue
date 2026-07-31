@@ -56,6 +56,10 @@ export default defineComponent({
     autofocus: { type: Boolean, default: false },
     inputId: { type: String as PropType<string | undefined>, default: undefined },
     lockChoice: { type: Function as PropType<((item: any) => boolean) | undefined>, default: undefined },
+    // Milliseconds to wait after typing stops before emitting `search`. Sits here
+    // rather than on <ui-select-choices> because it modifies this component's
+    // event; 0 emits on every keystroke.
+    debounce: { type: Number, default: 0 },
   },
   emits: ['update:modelValue', 'select', 'remove', 'search', 'highlight', 'open', 'close', 'paste'],
   setup(props, { emit, attrs, expose }) {
@@ -185,6 +189,7 @@ export default defineComponent({
       isItemSelected: model.isItemSelected,
       createTag: taggingUtil.createTag,
       focus: state.focus,
+      focusHost,
       clearSelection: model.clearSelection,
       dropdownRef: state.dropdownRef,
       inputRef: state.inputRef,
@@ -217,6 +222,15 @@ export default defineComponent({
     // ---- Theme ----
     const themeClasses = useThemeClasses(effectiveTheme)
 
+    // ---- Focus management ----
+    // Focuses the root element (always mounted), for the moments when the
+    // single-mode search input is about to unmount with the dropdown and a
+    // plain focus() would let keyboard focus fall to <body>. preventScroll for
+    // the same reason as on open: restoring focus must never move the page.
+    function focusHost() {
+      state.rootRef.value?.focus({ preventScroll: true })
+    }
+
     // ---- Event handlers ----
     function handleSelect(item: any) {
       if (props.disabled) return
@@ -241,7 +255,17 @@ export default defineComponent({
         nextTick(() => state.focus({ preventScroll: true }))
       } else {
         state.close()
+        // The input unmounts with the dropdown; without this, focus falls to
+        // <body> after every single-mode selection (click or Enter alike).
+        focusHost()
       }
+    }
+
+    // Creates a tag from the current search text and selects it — the click
+    // action of the "(new)" tag row rendered by UiSelectChoices.
+    function selectSearchAsTag() {
+      const tag = taggingUtil.createTag(state.search.value.trim())
+      if (tag != null) handleSelect(tag)
     }
 
     function handleRemove(item: any) {
@@ -251,11 +275,44 @@ export default defineComponent({
     }
 
     // ---- Search watcher → emit search event + token check ----
+    //
+    // `debounce` delays only the emitted event, never the local filtering: the
+    // list stays instant while a remote search waits for the user to stop typing.
+    // Held in a plain timer rather than the debounce() util so a pending emit can
+    // be cancelled — otherwise closing the dropdown resets `search` and a stale
+    // term fires afterwards.
+    let searchEmitTimer: ReturnType<typeof setTimeout> | null = null
+
+    function cancelPendingSearchEmit() {
+      if (searchEmitTimer) {
+        clearTimeout(searchEmitTimer)
+        searchEmitTimer = null
+      }
+    }
+
     watch(state.search, (val) => {
-      emit('search', val)
+      cancelPendingSearchEmit()
+
+      // An empty term is not a query — it means "clear". Emit it at once so a
+      // remote consumer drops its results immediately, and so closing the
+      // dropdown (which resets the search) behaves the same at any delay.
+      if (props.debounce > 0 && val !== '') {
+        searchEmitTimer = setTimeout(() => {
+          searchEmitTimer = null
+          emit('search', val)
+        }, props.debounce)
+      } else {
+        emit('search', val)
+      }
+
       state.activeIndex.value = -1
       // Check for token separators in the updated search text
       keyboard.handleSearchInput()
+    })
+
+    // A closed dropdown has no search to report; drop anything still in flight.
+    watch(state.isOpen, (open) => {
+      if (!open) cancelPendingSearchEmit()
     })
 
     // ---- Auto-close on disabled ----
@@ -342,6 +399,7 @@ export default defineComponent({
       document.removeEventListener('mousedown', handleClickOutside)
       document.removeEventListener('touchstart', handleClickOutside)
       state.rootRef.value?.removeEventListener('focusout', handleFocusOut)
+      cancelPendingSearchEmit()
     })
 
     // ---- Provide context to children ----
@@ -394,6 +452,9 @@ export default defineComponent({
       teleportStyle: positioning.teleportStyle,
       handlePaste: keyboard.handlePaste,
       handleKeyDown: keyboard.handleKeyDown,
+      shouldShowTagRow: taggingUtil.shouldShowTagRow,
+      getTagRowLabel: taggingUtil.getTagRowLabel,
+      selectSearchAsTag,
     }
 
     provide(UI_SELECT_CONTEXT, context)
@@ -467,7 +528,7 @@ export default defineComponent({
     :data-disabled="$props.disabled || undefined"
     :data-multiple="$props.multiple || undefined"
     :data-position="resolvedPosition"
-    :tabindex="effectiveSearchEnabled ? -1 : 0"
+    :tabindex="effectiveSearchEnabled && $props.multiple ? -1 : 0"
     @keydown="handleKeyDown"
     @paste="handlePaste"
   >

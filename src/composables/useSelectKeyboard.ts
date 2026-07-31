@@ -20,6 +20,12 @@ export function useSelectKeyboard(opts: {
   isItemSelected: (item: any) => boolean
   createTag: (search: string) => any
   focus: () => void
+  /**
+   * Focuses the root element. In single mode the search input lives inside the
+   * dropdown, so closing unmounts it and a plain focus() has nothing left to
+   * target — keyboard focus would fall to <body>.
+   */
+  focusHost: () => void
   clearSelection?: () => void
 
   dropdownRef: Ref<HTMLElement | null>
@@ -32,7 +38,7 @@ export function useSelectKeyboard(opts: {
     multiple, disabled, selected, tagging, taggingTokens,
     disableChoice, clearable,
     open, close, selectItem, removeItem,
-    createTag, focus, clearSelection,
+    createTag, focus, focusHost, clearSelection,
     dropdownRef, emit,
   } = opts
 
@@ -123,15 +129,24 @@ export function useSelectKeyboard(opts: {
           e.preventDefault()
           e.stopPropagation()
           close()
-          focus()
+          // Single mode: the input just unmounted with the dropdown, so focus
+          // the root. Multiple mode: the input lives in the match row and
+          // survives the close, so it keeps focus.
+          if (multiple.value) focus()
+          else focusHost()
         }
         break
       }
 
       case 'Tab': {
-        // Close without preventing default (to allow natural tab flow)
+        // Close without preventing default (to allow natural tab flow).
         if (isOpen.value) {
           close()
+          // Single mode: the focused input is teleported to <body>, so default
+          // Tab would continue from the END of the document. Refocus the root
+          // first — the browser computes the next tab stop from the element
+          // focused when the default action runs, restoring document order.
+          if (!multiple.value) focusHost()
         }
         break
       }

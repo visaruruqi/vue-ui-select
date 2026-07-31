@@ -8,18 +8,15 @@ export default defineComponent({
   name: 'UiSelectChoices',
   props: {
     items: { type: [Array, Object] as PropType<any[] | Record<string, any>>, default: () => [] },
-    sourceType: { type: String as PropType<'array' | 'object'>, default: 'array' },
     trackBy: { type: [String, Function] as PropType<string | ((item: any) => any) | undefined>, default: undefined },
     bindProperty: { type: String as PropType<string | undefined>, default: undefined },
     searchFields: { type: Array as PropType<string[]>, default: () => [] },
     filterFn: { type: Function as PropType<((item: any, search: string) => boolean) | undefined>, default: undefined },
     groupBy: { type: [String, Function] as PropType<string | ((item: any) => string | undefined) | undefined>, default: undefined },
     groupFilter: { type: [Array, Function] as PropType<string[] | ((groups: string[]) => string[]) | undefined>, default: undefined },
-    groupSelectable: { type: Boolean, default: false },
     disableChoice: { type: Function as PropType<((item: any) => boolean) | undefined>, default: undefined },
     sortFn: { type: Function as PropType<((a: any, b: any) => number) | undefined>, default: undefined },
     minimumInputLength: { type: Number, default: 0 },
-    refreshDelay: { type: Number, default: 0 },
     showCheckboxes: { type: Boolean, default: false },
   },
   setup(props) {
@@ -28,7 +25,6 @@ export default defineComponent({
     // Register choices config with parent UiSelect
     const choicesConfig: ChoicesConfig = {
       items: toRef(props, 'items') as any,
-      sourceType: toRef(props, 'sourceType'),
       trackBy: toRef(props, 'trackBy') as any,
       bindProperty: toRef(props, 'bindProperty') as any,
       searchFields: toRef(props, 'searchFields'),
@@ -38,7 +34,6 @@ export default defineComponent({
       disableChoice: toRef(props, 'disableChoice') as any,
       sortFn: toRef(props, 'sortFn') as any,
       minimumInputLength: toRef(props, 'minimumInputLength'),
-      refreshDelay: toRef(props, 'refreshDelay'),
     }
 
     // Register immediately for fast reactivity
@@ -104,10 +99,29 @@ export default defineComponent({
       return ctx.search.value.length < props.minimumInputLength && ctx.search.value.length > 0
     })
 
+    const remainingChars = computed(() => props.minimumInputLength - ctx.search.value.length)
+
+    // Default English copy; localize via the `minimum-length` slot.
     const minimumLengthMessage = computed(() => {
-      const remaining = props.minimumInputLength - ctx.search.value.length
+      const remaining = remainingChars.value
       return `Please enter ${remaining} more character${remaining !== 1 ? 's' : ''}`
     })
+
+    /**
+     * The dropdown swallows mousedown so clicking options never steals focus
+     * from the search input — but two regions need the default action back:
+     * the search box itself (caret placement, drag-selection, double-click
+     * word select are all mousedown defaults), and the scrollbar of the
+     * choices list, which some engines refuse to drag when the event is
+     * cancelled. offsetX/Y beyond the client box means the scrollbar (LTR).
+     */
+    function handleDropdownMousedown(e: MouseEvent) {
+      const target = e.target as HTMLElement | null
+      if (!target) return
+      if (target.closest('[data-ui-select-search]')) return
+      if (e.offsetX > target.clientWidth || e.offsetY > target.clientHeight) return
+      e.preventDefault()
+    }
 
     const isEmpty = computed(() => ctx.flatFilteredItems.value.length === 0)
 
@@ -132,8 +146,10 @@ export default defineComponent({
       getChoiceSlotScope,
       handleItemClick,
       handleItemMouseEnter,
+      handleDropdownMousedown,
       showMinimumLengthMessage,
       minimumLengthMessage,
+      remainingChars,
       isEmpty,
       hasNoChoiceContent,
       dropdownStyle,
@@ -157,7 +173,7 @@ export default defineComponent({
         :style="dropdownStyle"
         data-ui-select-dropdown=""
         data-testid="ui-select-dropdown"
-        @mousedown.prevent
+        @mousedown="handleDropdownMousedown"
       >
         <!-- Search input for single mode -->
         <div
@@ -189,7 +205,12 @@ export default defineComponent({
           data-ui-select-minimum-length=""
           data-testid="ui-select-minimum-length"
         >
-          {{ minimumLengthMessage }}
+          <!-- Localizable: the default is English-only copy. -->
+          <slot
+            name="minimum-length"
+            :remaining="remainingChars"
+            :minimum="minimumInputLength"
+          >{{ minimumLengthMessage }}</slot>
         </div>
 
         <!-- Choices list -->
@@ -253,9 +274,27 @@ export default defineComponent({
             </div>
           </template>
 
-          <!-- No results / empty state -->
+          <!-- "(new)" tag row — create the current search term as a tag.
+               Hover clears the active item so Enter also creates the tag. -->
           <div
-            v-if="isEmpty && !showMinimumLengthMessage && hasNoChoiceContent"
+            v-if="ctx.shouldShowTagRow()"
+            class="ui-select-choices__row ui-select-choices__tag-row"
+            data-ui-select-tag-row=""
+            data-testid="ui-select-tag-row"
+            role="option"
+            :aria-selected="false"
+            @click.stop="ctx.selectSearchAsTag()"
+            @mouseenter="ctx.activeIndex.value = -1"
+          >
+            <slot name="tag-row" :search="ctx.search.value" :label="ctx.getTagRowLabel()">
+              {{ ctx.getTagRowLabel() }}
+            </slot>
+          </div>
+
+          <!-- No results / empty state. The tag row supersedes it: "no results,
+               but you can create this" reads as the row alone. -->
+          <div
+            v-if="isEmpty && !showMinimumLengthMessage && hasNoChoiceContent && !ctx.shouldShowTagRow()"
             class="ui-select-no-choice"
             data-ui-select-no-choice=""
             data-testid="ui-select-no-choice"
