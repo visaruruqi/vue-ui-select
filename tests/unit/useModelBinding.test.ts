@@ -239,6 +239,95 @@ describe('useModelBinding', () => {
     })
   })
 
+  // --- clearSelection emissions ---
+  describe('clearSelection', () => {
+    it('single: emits update:modelValue, remove and clear with the previous item', () => {
+      const emit = vi.fn()
+      const item = { id: 1, name: 'Alice' }
+      const { clearSelection } = useModelBinding(makeOpts({ modelValue: ref(item), emit }))
+
+      emit.mockClear() // drop hydration-time emissions from the assertion
+      clearSelection()
+
+      expect(emit).toHaveBeenCalledWith('update:modelValue', null)
+      expect(emit).toHaveBeenCalledWith('remove', { item, model: null })
+      expect(emit).toHaveBeenCalledWith('clear', { items: [item], model: null })
+    })
+
+    it('single: remove payload matches the shape removeItem() emits', () => {
+      const emitClear = vi.fn()
+      const emitRemove = vi.fn()
+      const item = { id: 1, name: 'Alice' }
+
+      const a = useModelBinding(makeOpts({ modelValue: ref(item), emit: emitClear }))
+      emitClear.mockClear()
+      a.clearSelection()
+
+      const b = useModelBinding(makeOpts({ modelValue: ref(item), emit: emitRemove }))
+      emitRemove.mockClear()
+      b.removeItem(item)
+
+      const clearPayload = emitClear.mock.calls.find(([e]) => e === 'remove')?.[1]
+      const removePayload = emitRemove.mock.calls.find(([e]) => e === 'remove')?.[1]
+      expect(clearPayload).toEqual(removePayload)
+    })
+
+    it('single: no-op (no events at all) when nothing is selected', () => {
+      const emit = vi.fn()
+      const { clearSelection } = useModelBinding(makeOpts({ emit }))
+
+      emit.mockClear()
+      clearSelection()
+
+      expect(emit).not.toHaveBeenCalled()
+    })
+
+    it('multiple: emits one remove per cleared item, then a single clear', () => {
+      const emit = vi.fn()
+      const items = [
+        { id: 1, name: 'Alice' },
+        { id: 2, name: 'Bob' },
+      ]
+      const { clearSelection } = useModelBinding(
+        makeOpts({ multiple: ref(true), modelValue: ref([...items]), emit }),
+      )
+
+      emit.mockClear()
+      clearSelection()
+
+      expect(emit).toHaveBeenCalledWith('update:modelValue', [])
+      expect(emit).toHaveBeenCalledWith('remove', { item: items[0], model: [] })
+      expect(emit).toHaveBeenCalledWith('remove', { item: items[1], model: [] })
+      expect(emit).toHaveBeenCalledWith('clear', { items, model: [] })
+
+      const removeCalls = emit.mock.calls.filter(([e]) => e === 'remove')
+      const clearCalls = emit.mock.calls.filter(([e]) => e === 'clear')
+      expect(removeCalls).toHaveLength(2)
+      expect(clearCalls).toHaveLength(1)
+    })
+
+    it('multiple: no-op when the selection is already empty', () => {
+      const emit = vi.fn()
+      const { clearSelection } = useModelBinding(
+        makeOpts({ multiple: ref(true), modelValue: ref([]), emit }),
+      )
+
+      emit.mockClear()
+      clearSelection()
+
+      expect(emit).not.toHaveBeenCalled()
+    })
+
+    it('still clears the internal selection', () => {
+      const item = { id: 1, name: 'Alice' }
+      const { selected, clearSelection } = useModelBinding(makeOpts({ modelValue: ref(item) }))
+
+      clearSelection()
+
+      expect(selected.value).toBeNull()
+    })
+  })
+
   // --- trackBy ---
   describe('trackBy', () => {
     it('uses string trackBy for identity', () => {

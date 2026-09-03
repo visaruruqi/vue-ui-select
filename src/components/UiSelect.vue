@@ -61,7 +61,7 @@ export default defineComponent({
     // event; 0 emits on every keystroke.
     debounce: { type: Number, default: 0 },
   },
-  emits: ['update:modelValue', 'select', 'remove', 'search', 'highlight', 'open', 'close', 'paste'],
+  emits: ['update:modelValue', 'select', 'remove', 'clear', 'search', 'highlight', 'open', 'close', 'paste'],
   setup(props, { emit, attrs, expose }) {
     const propRefs = toRefs(props)
 

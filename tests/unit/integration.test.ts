@@ -196,6 +196,82 @@ describe('Single select — clear button', () => {
     expect((wrapper.vm as any).model).toBeNull()
     wrapper.unmount()
   })
+
+  it('emits remove and clear when the clear button is clicked', async () => {
+    const onRemove = vi.fn()
+    const onClear = vi.fn()
+    const wrapper = mountSelect({
+      modelValue: people[0],
+      clearable: true,
+      onRemove,
+      onClear,
+    })
+
+    await wrapper.find('[data-testid="ui-select-clear"]').trigger('click')
+    await nextTick()
+
+    expect(onRemove).toHaveBeenCalledTimes(1)
+    expect(onRemove).toHaveBeenCalledWith({ item: people[0], model: null })
+    expect(onClear).toHaveBeenCalledTimes(1)
+    expect(onClear).toHaveBeenCalledWith({ items: [people[0]], model: null })
+    wrapper.unmount()
+  })
+
+  it('emits remove and clear via the exposed clear() method', async () => {
+    const onRemove = vi.fn()
+    const onClear = vi.fn()
+    const wrapper = mountSelect({
+      modelValue: people[0],
+      clearable: true,
+      onRemove,
+      onClear,
+    })
+
+    const select = wrapper.findComponent({ name: 'UiSelect' })
+    // clear() is on the exposed API (template-ref surface), not the render context.
+    ;(select.vm as any).$.exposed.clear()
+    await nextTick()
+
+    expect((wrapper.vm as any).model).toBeNull()
+    expect(onRemove).toHaveBeenCalledWith({ item: people[0], model: null })
+    expect(onClear).toHaveBeenCalledWith({ items: [people[0]], model: null })
+    wrapper.unmount()
+  })
+
+  it('clear() on an empty selection emits nothing', async () => {
+    const onRemove = vi.fn()
+    const onClear = vi.fn()
+    const wrapper = mountSelect({ clearable: true, onRemove, onClear })
+
+    const select = wrapper.findComponent({ name: 'UiSelect' })
+    ;(select.vm as any).$.exposed.clear()
+    await nextTick()
+
+    expect(onRemove).not.toHaveBeenCalled()
+    expect(onClear).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
+  it('clearing by Backspace (empty search, clearable) emits remove and clear', async () => {
+    const onRemove = vi.fn()
+    const onClear = vi.fn()
+    const wrapper = mountSelect({
+      modelValue: people[0],
+      clearable: true,
+      onRemove,
+      onClear,
+    })
+
+    await openDropdown(wrapper)
+    const search = wrapper.find('[data-testid="ui-select-search"]')
+    await search.trigger('keydown', { key: 'Backspace' })
+    await nextTick()
+
+    expect((wrapper.vm as any).model).toBeNull()
+    expect(onRemove).toHaveBeenCalledWith({ item: people[0], model: null })
+    expect(onClear).toHaveBeenCalledWith({ items: [people[0]], model: null })
+    wrapper.unmount()
+  })
 })
 
 describe('Disabled state', () => {

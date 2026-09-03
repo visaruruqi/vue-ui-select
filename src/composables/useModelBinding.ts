@@ -207,12 +207,26 @@ export function useModelBinding(opts: {
   }
 
   function clearSelection() {
+    // Clearing an already-empty selection is a no-op — no model write, no
+    // events. The x icon and the keyboard path are gated on a selection
+    // anyway; this covers the exposed clear() method.
     if (multiple.value) {
+      const prev = Array.isArray(selected.value) ? [...selected.value] : []
+      if (prev.length === 0) return
       selected.value = []
+      emitModelValue()
+      // Per-item parity with removeItem(), so @remove handlers that maintain
+      // side state stay in sync when everything is cleared at once.
+      prev.forEach((item) => emit('remove', { item, model: [] }))
+      emit('clear', { items: prev, model: [] })
     } else {
+      const prev = selected.value
+      if (prev == null) return
       selected.value = null
+      emitModelValue()
+      emit('remove', { item: prev, model: null })
+      emit('clear', { items: [prev], model: null })
     }
-    emitModelValue()
   }
 
   return {

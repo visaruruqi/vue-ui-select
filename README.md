@@ -513,7 +513,8 @@ Props marked † can also be set as plugin-wide defaults — see [Plugin options
 |-------|---------|-------------|
 | `update:modelValue` | `any` | v-model update |
 | `select` | `{ item, model }` | Item selected |
-| `remove` | `{ item, model }` | Item removed |
+| `remove` | `{ item, model }` | Item removed — also fired by a clear (once per cleared item), so side state keyed to removals stays in sync |
+| `clear` | `{ items, model }` | Selection cleared (× icon, Backspace, or the exposed `clear()` method); `items` is everything that was cleared |
 | `search` | `string` | Search text changed |
 | `highlight` | `any` | Active option changed (keyboard navigation) |
 | `open` | — | Dropdown opened |
